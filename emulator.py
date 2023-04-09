@@ -40,6 +40,8 @@ def read_topology(filename):
     print(network_topology)
     return network_topology
 
+paths = []
+path = []
 # prints out source and dest as well as the distance
 def print_solution(start_node, distances, parents, index_to_node_map):
     num_nodes = len(distances)
@@ -53,6 +55,12 @@ def print_solution(start_node, distances, parents, index_to_node_map):
             print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
             print_path(node_index, parents, index_to_node_map)
 
+            global path
+            paths.append(path)
+            path = []
+    
+    return paths
+
 NO_PARENT = -1
 # prints shortest path between source and dest node using parents array
 def print_path(current_node, parents, index_to_node_map):
@@ -60,8 +68,9 @@ def print_path(current_node, parents, index_to_node_map):
         return
     
     print_path(parents[current_node], parents, index_to_node_map)
-    
+
     curr_addr = index_to_node_map[current_node]
+    path.append(curr_addr)
     print(curr_addr, end=" ")
 
 def dijkstra(adjacency_matrix, start_node, index_to_node_map):
@@ -100,7 +109,24 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
                 parents[node_index] = nearest_node
                 min_distance[node_index] = shortest_distance + edge_distance
  
-    print_solution(start_node, min_distance, parents, index_to_node_map)
+    all_paths = print_solution(start_node, min_distance, parents, index_to_node_map)
+    print('\nALL PATHS:')
+    print(all_paths)
+
+    forwarding_table = construct_forwarding_table(all_paths)
+    print('FORWARDING TABLE:')
+    print(forwarding_table)
+
+def construct_forwarding_table(all_paths):
+    # { dest: next_hop }
+    forwarding_table = {}
+
+    for path in all_paths:
+        dest = path[len(path) - 1]
+        next_hop = path[1]
+        forwarding_table[dest] = next_hop
+
+    return forwarding_table
 
 def construct_adjacency_matrix(network_topology):
     # assign each ip:port node a number for the adjacency matrix
