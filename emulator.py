@@ -40,126 +40,99 @@ def read_topology(filename):
     print(network_topology)
     return network_topology
 
+# prints out source and dest as well as the distance
+def print_solution(start_node, distances, parents, index_to_node_map):
+    num_nodes = len(distances)
+    print("         node\t\t\t      Distance\t\t\t Path")
+    
+    start_addr = index_to_node_map[start_node]
+    for node_index in range(num_nodes):
+        if node_index != start_node:
+            dest_addr = index_to_node_map[node_index]
+
+            print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
+            print_path(node_index, parents, index_to_node_map)
+
 NO_PARENT = -1
-
-# A utility function to print
-# the constructed distances
-# array and shortest paths
-def print_solution(start_vertex, distances, parents):
-    n_vertices = len(distances)
-    print("Vertex\t Distance\tPath")
-     
-    for vertex_index in range(n_vertices):
-        if vertex_index != start_vertex:
-            print("\n", start_vertex + 1, "->", vertex_index + 1, "\t\t", distances[vertex_index], "\t\t", end="")
-            print_path(vertex_index, parents)
-
-# Function to print shortest path
-# from source to current_vertex
-# using parents array
-def print_path(current_vertex, parents):
-    # Base case : Source node has
-    # been processed
-    if current_vertex == NO_PARENT:
+# prints shortest path between source and dest node using parents array
+def print_path(current_node, parents, index_to_node_map):
+    if current_node == NO_PARENT:
         return
-    print_path(parents[current_vertex], parents)
-    print(current_vertex + 1, end=" ")
+    
+    print_path(parents[current_node], parents, index_to_node_map)
+    
+    curr_addr = index_to_node_map[current_node]
+    print(curr_addr, end=" ")
 
-def dijkstra(adjacency_matrix, start_vertex):
-    n_vertices = len(adjacency_matrix[0])
+def dijkstra(adjacency_matrix, start_node, index_to_node_map):
+    num_nodes = len(adjacency_matrix)
+
+    # min_distance[i] holds the min distance from start node to i
+    min_distance = [sys.maxsize] * num_nodes
+    visited = [False] * num_nodes
  
-    # shortest_distances[i] will hold the
-    # shortest distance from start_vertex to i
-    shortest_distances = [sys.maxsize] * n_vertices
- 
-    # added[i] will true if vertex i is
-    # included in shortest path tree
-    # or shortest distance from start_vertex to
-    # i is finalized
-    added = [False] * n_vertices
- 
-    # Initialize all distances as
-    # INFINITE and added[] as false
-    for vertex_index in range(n_vertices):
-        shortest_distances[vertex_index] = sys.maxsize
-        added[vertex_index] = False
+    for node_index in range(num_nodes):
+        min_distance[node_index] = sys.maxsize
+        visited[node_index] = False
          
-    # Distance of source vertex from
-    # itself is always 0
-    shortest_distances[start_vertex] = 0
+    min_distance[start_node] = 0
  
-    # Parent array to store shortest
-    # path tree
-    parents = [-1] * n_vertices
+    # parent array to store shortest path
+    parents = [-1] * num_nodes
+    parents[start_node] = NO_PARENT
  
-    # The starting vertex does not
-    # have a parent
-    parents[start_vertex] = NO_PARENT
- 
-    # Find shortest path for all
-    # vertices
-    for i in range(1, n_vertices):
-        # Pick the minimum distance vertex
-        # from the set of vertices not yet
-        # processed. nearest_vertex is
-        # always equal to start_vertex in
-        # first iteration.
-        nearest_vertex = -1
+    # picking the curr source node
+    for i in range(0, num_nodes - 1):
+        nearest_node = -1 # holds the index of the picked/source node
         shortest_distance = sys.maxsize
-        for vertex_index in range(n_vertices):
-            if not added[vertex_index] and shortest_distances[vertex_index] < shortest_distance:
-                nearest_vertex = vertex_index
-                shortest_distance = shortest_distances[vertex_index]
+        for node_index in range(num_nodes):
+            if not visited[node_index] and min_distance[node_index] < shortest_distance:
+                nearest_node = node_index
+                shortest_distance = min_distance[node_index]
  
-        # Mark the picked vertex as
-        # processed
-        added[nearest_vertex] = True
+        visited[nearest_node] = True
+
+        # exploring and updating adjacent nodes to picked source node
+        for node_index in range(num_nodes):
+            edge_distance = adjacency_matrix[nearest_node][node_index]
+            # shortest dist refers to the shortest dist to reach the curr node at node_index from the starting node
+            if edge_distance > 0 and shortest_distance + edge_distance < min_distance[node_index]:
+                parents[node_index] = nearest_node
+                min_distance[node_index] = shortest_distance + edge_distance
  
-        # Update dist value of the
-        # adjacent vertices of the
-        # picked vertex.
-        for vertex_index in range(n_vertices):
-            edge_distance = adjacency_matrix[nearest_vertex][vertex_index]
-             
-            if edge_distance > 0 and shortest_distance + edge_distance < shortest_distances[vertex_index]:
-                parents[vertex_index] = nearest_vertex
-                shortest_distances[vertex_index] = shortest_distance + edge_distance
- 
-    print_solution(start_vertex, shortest_distances, parents)
+    print_solution(start_node, min_distance, parents, index_to_node_map)
 
 def construct_adjacency_matrix(network_topology):
-    # need to assign each ip:port node a number for the adjacency matrix
+    # assign each ip:port node a number for the adjacency matrix
     num_nodes = len(network_topology)
-    index_to_node = {}
-    node_to_index = {}
+    index_to_node_map = {}
+    node_to_index_map = {}
     index = 0
     for node in network_topology:
-        node_to_index[node] = index
-        index_to_node[index] = node
+        node_to_index_map[node] = index
+        index_to_node_map[index] = node
         index += 1
     
     adjacency_matrix = [[0 for column in range(num_nodes)]
                       for row in range(num_nodes)]
     
     for node in network_topology:
-        node_index = node_to_index[node]
+        node_index = node_to_index_map[node]
         neighboring_nodes = network_topology[node]
         for neighbor in neighboring_nodes:
-            neighbor_index = node_to_index[neighbor]
+            neighbor_index = node_to_index_map[neighbor]
             adjacency_matrix[node_index][neighbor_index] = 1
             adjacency_matrix[neighbor_index][node_index] = 1
 
     print(adjacency_matrix)
-    return adjacency_matrix
-
-
+    return adjacency_matrix, index_to_node_map
 
 # implements link-state routing protocol and sets up a shortest path
 # forwarding table between nodes in the specified network topology
 def create_routes(network_topology):
     # 1) dijkstra's algorithm
-    adjacency_matrix = construct_adjacency_matrix(network_topology)
-    dijkstra(adjacency_matrix, 0)
+    adjacency_matrix, index_to_node_map = construct_adjacency_matrix(network_topology)
+    dijkstra(adjacency_matrix, 0, index_to_node_map)
 
     # 2) construct forwarding table
 
