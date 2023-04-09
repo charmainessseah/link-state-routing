@@ -51,7 +51,7 @@ def print_solution(start_vertex, distances, parents):
      
     for vertex_index in range(n_vertices):
         if vertex_index != start_vertex:
-            print("\n", start_vertex, "->", vertex_index, "\t\t", distances[vertex_index], "\t\t", end="")
+            print("\n", start_vertex + 1, "->", vertex_index + 1, "\t\t", distances[vertex_index], "\t\t", end="")
             print_path(vertex_index, parents)
 
 # Function to print shortest path
@@ -63,7 +63,7 @@ def print_path(current_vertex, parents):
     if current_vertex == NO_PARENT:
         return
     print_path(parents[current_vertex], parents)
-    print(current_vertex, end=" ")
+    print(current_vertex + 1, end=" ")
 
 def dijkstra(adjacency_matrix, start_vertex):
     n_vertices = len(adjacency_matrix[0])
@@ -127,24 +127,41 @@ def dijkstra(adjacency_matrix, start_vertex):
  
     print_solution(start_vertex, shortest_distances, parents)
 
+def construct_adjacency_matrix(network_topology):
+    # need to assign each ip:port node a number for the adjacency matrix
+    num_nodes = len(network_topology)
+    index_to_node = {}
+    node_to_index = {}
+    index = 0
+    for node in network_topology:
+        node_to_index[node] = index
+        index_to_node[index] = node
+        index += 1
+    
+    adjacency_matrix = [[0 for column in range(num_nodes)]
+                      for row in range(num_nodes)]
+    
+    for node in network_topology:
+        node_index = node_to_index[node]
+        neighboring_nodes = network_topology[node]
+        for neighbor in neighboring_nodes:
+            neighbor_index = node_to_index[neighbor]
+            adjacency_matrix[node_index][neighbor_index] = 1
+            adjacency_matrix[neighbor_index][node_index] = 1
+
+    print(adjacency_matrix)
+    return adjacency_matrix
+
+
+
 # implements link-state routing protocol and sets up a shortest path
 # forwarding table between nodes in the specified network topology
 def create_routes(network_topology):
     # 1) dijkstra's algorithm
-    # - construct adjacency matrix
-    adjacency_matrix = [[0, 4, 0, 0, 0, 0, 0, 8, 0],
-                              [4, 0, 8, 0, 0, 0, 0, 11, 0],
-                              [0, 8, 0, 7, 0, 4, 0, 0, 2],
-                              [0, 0, 7, 0, 9, 14, 0, 0, 0],
-                              [0, 0, 0, 9, 0, 10, 0, 0, 0],
-                              [0, 0, 4, 14, 10, 0, 2, 0, 0],
-                              [0, 0, 0, 0, 0, 2, 0, 1, 6],
-                              [8, 11, 0, 0, 0, 0, 1, 0, 7],
-                              [0, 0, 2, 0, 0, 0, 6, 7, 0]]
+    adjacency_matrix = construct_adjacency_matrix(network_topology)
     dijkstra(adjacency_matrix, 0)
 
     # 2) construct forwarding table
-    pass
 
 # creates the forwarding table
 def build_route_table():
