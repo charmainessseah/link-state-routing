@@ -1,6 +1,14 @@
 import argparse
+from enum import Enum
+import pickle
 import socket
 import sys
+import struct
+import time
+
+class Packet_Type(Enum):
+    HELLO_MESSAGE = 'H'
+    LINK_STATE_MESSAGE = 'L'
 
 def parse_command_line_args():
     parser = argparse.ArgumentParser()
@@ -116,6 +124,7 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
     forwarding_table = construct_forwarding_table(all_paths)
     print('FORWARDING TABLE:')
     print(forwarding_table)
+    return forwarding_table
 
 def construct_forwarding_table(all_paths):
     # { dest: next_hop }
@@ -153,17 +162,67 @@ def construct_adjacency_matrix(network_topology):
     print(adjacency_matrix)
     return adjacency_matrix, index_to_node_map
 
-# implements link-state routing protocol and sets up a shortest path
-# forwarding table between nodes in the specified network topology
-def create_routes(network_topology):
-    # 1) dijkstra's algorithm
+# TODO
+def send_message(source_addr, dest_addr, data):
+    source_ip = source_addr.split(' ')[0]
+    source_port = source_addr.split(' ')[1]
+    dest_ip = dest_addr.split(' ')[0]
+    dest_port = dest_addr.split(' ')[1]
+
+# TODO
+def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
+    source_ip = my_addr.split(' ')[0]
+    source_port = my_addr.split(' ')[1] 
+    for neighbor in neighboring_nodes:
+        print('neighbor: ', neighbor)
+        dest_ip = neighbor.split(' ')[0]
+        dest_port = neighbor.split(' ')[1]
+
+        # do we need a header?
+        # header = struct.pack('!cII', packet_type, sequence_number, window_size)
+        data = 'hello'.encode()
+
+        global sock
+        sock.sendto(data, (dest_ip, dest_port))
+
+def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
+    for neighbor in neighboring_nodes:
+        print('neighbor: ', neighbor)
+        dest_ip = neighbor.split(' ')[0]
+        dest_port = neighbor.split(' ')[1]
+
+        # do we need a header?
+        # header = struct.pack('!cII', packet_type, sequence_number, window_size)
+        data = 'hello'.encode()
+        
+        global sock
+        sock.sendto(data, (dest_ip, dest_port))
+
+# finds the shortest path between all nodes from source to dest
+# and returns an updated forwarding table
+def find_shortest_path_and_return_forwarding_table(network_topology):
+    starting_node = 0
     adjacency_matrix, index_to_node_map = construct_adjacency_matrix(network_topology)
-    dijkstra(adjacency_matrix, 0, index_to_node_map)
+    forwarding_table = dijkstra(adjacency_matrix, starting_node, index_to_node_map)
 
-    # 2) construct forwarding table
+    return forwarding_table
 
-# creates the forwarding table
-def build_route_table():
+def init_dictionaries(list_of_neighbors):
+    active_neighbors = {}
+    received_hello_message = {}
+
+    for neighbor in list_of_neighbors:
+        active_neighbors[neighbor] = True
+        received_hello_message = False
+
+    return active_neighbors, received_hello_message
+
+def epoch_time_in_milliseconds_now():
+    time_now_in_milliseconds = round(time.time() * 1000)
+    # print("Milliseconds since epoch:", time_now_in_milliseconds)
+    return time_now_in_milliseconds
+
+def update_network_topology(received_hello_message):
     pass
 
 args = parse_command_line_args()
@@ -172,7 +231,42 @@ topology_filename = args.filename
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 emulator_hostname = socket.gethostname()
+emulator_ip = socket.gethostbyname(emulator_hostname)
 sock.bind((emulator_hostname, emulator_port))
+sock.setblocking(0) # receive packets in a non-blocking way
+
+my_addr = emulator_ip + ':' + str(emulator_port)
+my_addr = '1.0.0.0:1'
 
 network_topology = read_topology(topology_filename)
-create_routes(network_topology)
+
+# active_neighbors = { ip:port : True/ False }
+# we will init all neighbors to be active initially
+# received_hello_message = { ip:port : False }
+active_neighbors, received_hello_message = init_dictionaries(network_topology[my_addr])
+hello_receipt_expiry = None
+
+while True:
+    try:
+        forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
+
+        # send Hello Message every 10 seconds to neighbors
+        time_now = epoch_time_in_milliseconds_now()
+        if  time_now % 10000 == 0:
+            hello_receipt_expiry = time_now + 5000 # 5 seconds for neighbors to send an ack
+            neighboring_nodes = network_topology[my_addr]
+            send_hello_message_to_neighbors(my_addr, neighboring_nodes)
+
+        packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
+        sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
+        if packet:
+            received_hello_message[sender_full_address] = True
+
+        if epoch_time_in_milliseconds_now() > hello_receipt_expiry:
+            network_topology = update_network_topology(received_hello_message)
+            forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
+            neighboring_nodes = network_topology[my_addr]
+            send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
+
+    except:
+        pass
