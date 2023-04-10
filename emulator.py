@@ -260,9 +260,12 @@ while True:
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
         if packet:
+            # distinguish if it is a hello message receipt or
             received_hello_message[sender_full_address] = True
 
-        if epoch_time_in_milliseconds_now() > hello_receipt_expiry:
+            # if it is a routetrace packet
+
+        if hello_receipt_expiry is not None and epoch_time_in_milliseconds_now() > hello_receipt_expiry:
             network_topology = update_network_topology(received_hello_message)
             forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
             neighboring_nodes = network_topology[my_addr]
