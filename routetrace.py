@@ -21,18 +21,19 @@ def parse_command_line_args():
     args = parser.parse_args()
     return args
 
-def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option):
+def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option):
     print('--------------------------------------')
     print('SENDING PACKET:')
     print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
-    print('dest hostname: ', dest_hostname, ', dest port: ', dest_port)
+    print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
     print('source hostname: ', source_hostname, ', source port: ', source_port)
     print('debug option: ', debug_option)
     print('--------------------------------------')
 
     header = struct.pack(
-        '!cIIII',
+        '!cIIIII',
         Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        time_to_live,
         routetrace_ip, routetrace_port,
         dest_ip, dest_port
     )
@@ -66,7 +67,7 @@ sock.bind((routetrace_hostname, routetrace_port))
 
 time_to_live = 0
 while True:
-    send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option)
+    send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
     packet_with_header, sender_address = sock.recvfrom(1024)
 
     responder_ip, responder_port = parse_packet(packet_with_header)

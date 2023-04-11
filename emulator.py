@@ -170,6 +170,52 @@ def send_message(source_addr, dest_addr, data):
     dest_ip = dest_addr.split(' ')[0]
     dest_port = dest_addr.split(' ')[1]
 
+def parse_packet(packet):
+    encapsulation_header = struct.unpack('!BBBBBhBBBBhI', packet[:17]) # first unpack and get encapsulation header
+
+    header = struct.unpack('!cIIIII', packet[:22])
+    packet_type = header[0].decode('ascii')
+    time_to_live = header[1]
+    source_ip = header[2] 
+    source_port = header[3]
+    dest_ip = header[4]
+    dest_port = header[5]
+
+    data = packet[17:].decode()
+
+    print('-----------------------------')
+    print('INCOMING PACKET:')
+    print('packet type: ', packet_type)
+    print('time to live: ', time_to_live)
+    print('source ip: ', source_ip, ', source port: ', source_port)
+    print('dest ip: ', dest_ip, ', dest port: ', dest_port)
+    print('data: ', data)
+    print('-----------------------------')
+    
+    return packet_type, time_to_live, source_ip, source_port, dest_ip, dest_port
+
+def send_routetrace_packet(time_to_live, source_ip, source_port, dest_ip, dest_port):
+    print('--------------------------------------')
+    print('SENDING PACKET:')
+    print('source ip: ', source_ip, ', source port: ', source_port)
+    print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
+    # print('source hostname: ', source_hostname, ', source port: ', source_port)
+    print('--------------------------------------')
+
+    header = struct.pack(
+        '!cIIIII',
+        Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        time_to_live,
+        source_ip, source_port,
+        dest_ip, dest_port
+    )
+    data = ''.encode()
+    packet = header + data
+
+    global sock
+    sock.sendto(packet, (dest_ip, dest_port))
+
+
 # TODO
 def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
     source_ip = my_addr.split(' ')[0]
@@ -179,12 +225,18 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
         dest_ip = neighbor.split(' ')[0]
         dest_port = neighbor.split(' ')[1]
 
-        # do we need a header?
-        # header = struct.pack('!cII', packet_type, sequence_number, window_size)
+        header = struct.pack(
+            '!cIIIII',
+            0,
+            Packet_Type.HELLO_MESSAGE.value.encode('ascii'),
+            0, 0,
+            0, 0
+        )
         data = 'hello'.encode()
+        packet = header + data
 
         global sock
-        sock.sendto(data, (dest_ip, dest_port))
+        sock.sendto(packet, (dest_ip, dest_port))
 
 def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
     for neighbor in neighboring_nodes:
@@ -223,6 +275,19 @@ def epoch_time_in_milliseconds_now():
     # print("Milliseconds since epoch:", time_now_in_milliseconds)
     return time_now_in_milliseconds
 
+def decrement_time_to_live(packet_type, time_to_live, source_ip, source_port, dest_ip, dest_port):
+    header = struct.pack(
+        '!cIIIII',
+        packet_type.encode('ascii'),
+        time_to_live - 1,
+        source_ip, source_port,
+        dest_ip, dest_port
+    )
+    data = ''.encode()
+    packet = header + data
+
+    return packet
+    
 def update_network_topology(received_hello_message):
     pass
 
@@ -261,10 +326,17 @@ while True:
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
         if packet:
-            # distinguish if it is a hello message receipt or
-            received_hello_message[sender_full_address] = True
+            packet_type, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port = parse_packet(packet)
+            
+            if packet_type == Packet_Type.HELLO_MESSAGE.value:
+                received_hello_message[sender_full_address] = True
 
-            # if it is a routetrace packet
+            if packet_type == Packet_Type.ROUTE_TRACE.value:
+                if time_to_live == 0:
+                    send_routetrace_packet(time_to_live, emulator_ip, emulator_port, dest_ip, dest_port)
+                else:
+                    packet = decrement_time_to_live(packet_type, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port)
+                    # TODO: forward this packet to the next hop
 
         if hello_receipt_expiry is not None and epoch_time_in_milliseconds_now() > hello_receipt_expiry:
             network_topology = update_network_topology(received_hello_message)
