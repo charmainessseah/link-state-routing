@@ -9,6 +9,7 @@ import time
 class Packet_Type(Enum):
     HELLO_MESSAGE = 'H'
     LINK_STATE_MESSAGE = 'L'
+    ROUTE_TRACE = 'T'
 
 def parse_command_line_args():
     parser = argparse.ArgumentParser()

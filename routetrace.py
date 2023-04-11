@@ -1,5 +1,12 @@
 import argparse
+from enum import Enum
 import socket
+import struct
+
+class Packet_Type(Enum):
+    HELLO_MESSAGE = 'H'
+    LINK_STATE_MESSAGE = 'L'
+    ROUTE_TRACE = 'T'
 
 def parse_command_line_args():
     parser = argparse.ArgumentParser()
@@ -14,7 +21,7 @@ def parse_command_line_args():
     args = parser.parse_args()
     return args
 
-def send_packet(t, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option):
+def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option):
     print('--------------------------------------')
     print('SENDING PACKET:')
     print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
@@ -23,7 +30,19 @@ def send_packet(t, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_p
     print('debug option: ', debug_option)
     print('--------------------------------------')
 
-# parse the packet and return the responder's ip and port
+    header = struct.pack(
+        '!cIIII',
+        Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        routetrace_ip, routetrace_port,
+        dest_ip, dest_port
+    )
+    data = ''.encode()
+    packet = header + data
+
+    global sock
+    sock.sendto(packet, (dest_ip, dest_port))
+
+# TODO: parse the packet and return the responder's ip and port
 def parse_packet(packet):
     print('--------------------------')
     print('PARSING PACKET:')
@@ -45,10 +64,9 @@ routetrace_hostname = socket.gethostname()
 routetrace_ip = socket.gethostbyname(routetrace_hostname)
 sock.bind((routetrace_hostname, routetrace_port))
 
+time_to_live = 0
 while True:
-    t = 0 # what is t?????!!
-    time_to_live = 0
-    send_packet(t, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option)
+    send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, source_hostname, source_port, debug_option)
     packet_with_header, sender_address = sock.recvfrom(1024)
 
     responder_ip, responder_port = parse_packet(packet_with_header)
