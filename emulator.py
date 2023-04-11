@@ -287,7 +287,7 @@ def decrement_time_to_live(packet_type, time_to_live, source_ip, source_port, de
     packet = header + data
 
     return packet
-    
+
 def update_network_topology(received_hello_message):
     pass
 
@@ -336,7 +336,9 @@ while True:
                     send_routetrace_packet(time_to_live, emulator_ip, emulator_port, dest_ip, dest_port)
                 else:
                     packet = decrement_time_to_live(packet_type, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port)
-                    # TODO: forward this packet to the next hop
+                    dest_addr = dest_ip + ':' + str(dest_port)
+                    next_hop = forwarding_table[dest_addr]
+                    sock.sendto(packet, (next_hop.split(':')[0], next_hop.split(':')[0]))
 
         if hello_receipt_expiry is not None and epoch_time_in_milliseconds_now() > hello_receipt_expiry:
             network_topology = update_network_topology(received_hello_message)
