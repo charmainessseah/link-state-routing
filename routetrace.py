@@ -43,13 +43,30 @@ def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port
     global sock
     sock.sendto(packet, (dest_ip, dest_port))
 
-# TODO: parse the packet and return the responder's ip and port
 def parse_packet(packet):
-    print('--------------------------')
-    print('PARSING PACKET:')
-    print('--------------------------')
+    encapsulation_header = struct.unpack('!BBBBBhBBBBhI', packet[:17]) # first unpack and get encapsulation header
+
+    header = struct.unpack('!cIIIII', packet[:22])
+    packet_type = header[0].decode('ascii')
+    time_to_live = header[1]
+    source_ip = header[2] 
+    source_port = header[3]
+    dest_ip = header[4]
+    dest_port = header[5]
+
+    data = packet[17:].decode()
+
+    print('-----------------------------')
+    print('INCOMING PACKET:')
+    print('packet type: ', packet_type)
+    print('time to live: ', time_to_live)
+    print('source ip: ', source_ip, ', source port: ', source_port)
+    print('dest ip: ', dest_ip, ', dest port: ', dest_port)
+    print('data: ', data)
+    print('-----------------------------')
     
-    return '123.123.123.123', 2000
+    # return packet_type, time_to_live, source_ip, source_port, dest_ip, dest_port
+    return source_ip, source_port
 
 args = parse_command_line_args()
 routetrace_port = args.routetrace_port
