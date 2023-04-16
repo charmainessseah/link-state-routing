@@ -23,19 +23,31 @@ def parse_command_line_args():
 
 def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option):
     print('--------------------------------------')
-    print('SENDING PACKET:')
+    print('SENDING ROUTETRACE PACKET:')
     print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
     print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
-    print('source hostname: ', source_hostname, ', source port: ', source_port)
+    print('time to live: ', time_to_live)
     print('debug option: ', debug_option)
     print('--------------------------------------')
+    routetrace_ip_a = routetrace_ip.split('.')[0]
+    routetrace_ip_b = routetrace_ip.split('.')[1]
+    routetrace_ip_c = routetrace_ip.split('.')[2]
+    routetrace_ip_d = routetrace_ip.split('.')[3]
 
+    dest_ip_a = dest_ip.split('.')[0]
+    dest_ip_b = dest_ip.split('.')[1]
+    dest_ip_c = dest_ip.split('.')[2]
+    dest_ip_d = dest_ip.split('.')[3]
+   
     header = struct.pack(
-        '!cIIIII',
+        '!cIIIIIIIIIIII',
         Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        routetrace_ip_a, routetrace_ip_b, routetrace_ip_c, routetrace_ip_d,
+        source_port,
+        0, # placeholder values,
         time_to_live,
-        routetrace_ip, routetrace_port,
-        dest_ip, dest_port
+        dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
+        dest_port
     )
     data = ''.encode()
     packet = header + data
@@ -61,7 +73,7 @@ def parse_packet(packet):
     print('packet type: ', packet_type)
     print('source ip: ', source_ip, ', source port: ', source_port)
     print('dest ip: ', dest_ip, ', dest port: ', dest_port)
-    print('sequence number: ', sequence_number)
+    #print('sequence number: ', sequence_number) this field is unused in a routetrace packet
     print('time to live: ', ttl)
     print('data: ', data)
     print('-----------------------------')
