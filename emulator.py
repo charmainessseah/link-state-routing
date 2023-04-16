@@ -278,7 +278,7 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
 
-def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
+def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_number):
     source_ip = my_addr.split(' ')[0]
     source_ip_a = source_ip.split('.')[0]
     source_ip_b = source_ip.split('.')[1]
@@ -291,9 +291,8 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
         dest_ip = neighbor.split(' ')[0]
         dest_port = neighbor.split(' ')[1]
 
-        # TODO: init these values correctly
-        sequence_number = 0
-        # ttl = 0
+        # TODO: what should the ttl be?
+        ttl = 0
 
         header = struct.pack('!cIIIIIIIIIIII', 
         Packet_Type.LINK_STATE_MESSAGE.value.encode('ascii'),
@@ -384,6 +383,10 @@ def update_network_topology(original_network_topology, available_neighbors):
 
     return updated_network_topology
 
+def forward_link_state_packet_to_neighbors(packet, neighboring_nodes):
+    # rmb to decrement ttl
+    pass
+
 args = parse_command_line_args()
 emulator_port = args.port
 topology_filename = args.filename
@@ -398,7 +401,8 @@ my_addr = emulator_ip + ':' + str(emulator_port)
 my_addr = '1.0.0.0:1'
 
 original_network_topology = read_topology(topology_filename)
-lsp_sequence_number = 0
+lsp_sequence_number = -1
+link_state_packet_data = None
 
 # active_neighbors = { ip:port : True/ False }
 # we will init all neighbors to be active initially
@@ -424,6 +428,7 @@ while True:
             packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
             
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
+                print('received hello ack from: ', sender_full_address)
                 send_hello_ack(my_addr, sender_full_address)
 
                 node_came_alive = False
@@ -436,7 +441,8 @@ while True:
                         neighboring_nodes = network_topology[my_addr]
 
                 if node_came_alive:
-                    send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
+                    send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
+                    lsp_sequence_number += 1
 
             if packet_type == Packet_Type.HELLO_ACK.value:
                 print('received hello packet from: ', sender_full_address)
@@ -447,16 +453,19 @@ while True:
 
             if packet_type == Packet_Type.LINK_STATE_MESSAGE.value:
                 print('received link state packet from: ', sender_full_address)
-                senders_neighboring_nodes = pickle.loads(data)
-                # update available_neighbors
-                # update network topology
-                # update forwarding table
-                # forward this link state packet; rmb to decrement ttl
+                if link_state_packet_data is None or sequence_number > lsp_sequence_number:
+                    lsp_sequence_number = sequence_number
+                    senders_neighboring_nodes = pickle.loads(data)
+                    link_state_packet_data = senders_neighboring_nodes
+                    for node in senders_neighboring_nodes:
+                        available_neighbors[node] = True
+                        network_topology = update_network_topology(original_network_topology, available_neighbors)
+                        forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
+                        neighboring_nodes = network_topology[my_addr]
+                        forward_link_state_packet_to_neighbors(packet, neighboring_nodes)
 
-                if time_to_live == 0:
-                    # delete this lsp
-                    pass
-                pass
+                    if time_to_live == 0:
+                        link_state_packet_data = None
 
             if packet_type == Packet_Type.ROUTE_TRACE.value:
                 print('received routetrace packet from:', sender_full_address)
@@ -481,7 +490,8 @@ while True:
                     neighboring_nodes = network_topology[my_addr]
 
             if node_went_down:
-                send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
+                send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
+                lsp_sequence_number += 1
 
             for node in received_hello_message:
                 print('resetting received_hello_messages to all false')
