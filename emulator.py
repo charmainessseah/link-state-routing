@@ -11,6 +11,7 @@ class Packet_Type(Enum):
     HELLO_MESSAGE = 'H'
     LINK_STATE_MESSAGE = 'L'
     ROUTE_TRACE = 'T'
+    HELLO_ACK = 'A'
 
 def parse_command_line_args():
     parser = argparse.ArgumentParser()
@@ -165,42 +166,87 @@ def construct_adjacency_matrix(network_topology):
     return adjacency_matrix, index_to_node_map
 
 def parse_packet(packet):
-    header = struct.unpack('!cIIIIIII', packet[:30])
+    header = struct.unpack('!cIIIIIIIIIIII', packet[:50])
     packet_type = header[0].decode('ascii')
     source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
     source_port = header[5]
     sequence_number = header[6]
     ttl = header[7]
 
-    data = packet[30:].decode()
+    dest_ip = str(header[8]) + '.' + str(header[9]) + '.' + str(header[10]) + '.' + str(header[11])
+    dest_port = header[12]
+
+    data = packet[50:].decode()
 
     print('-----------------------------')
     print('INCOMING PACKET:')
     print('packet type: ', packet_type)
     print('source ip: ', source_ip, ', source port: ', source_port)
+    print('dest ip: ', dest_ip, ', dest port: ', dest_port)
     print('sequence number: ', sequence_number)
     print('time to live: ', ttl)
     print('data: ', data)
     print('-----------------------------')
     
-    return packet_type, source_ip, source_port, sequence_number, time_to_live, data
+    return packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data
 
-def send_routetrace_packet(time_to_live, source_ip, source_port, dest_ip, dest_port):
+def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port):
     print('--------------------------------------')
-    print('SENDING PACKET:')
+    print('SENDING ROUTETRACE PACKET:')
+    print('packet type: ', packet_type)
+    print('emulator ip: ', emulator_ip, ', emulator port: ', emulator_port)
     print('source ip: ', source_ip, ', source port: ', source_port)
     print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
-    # print('source hostname: ', source_hostname, ', source port: ', source_port)
+    # print('sequence number: ', sequence_number) unused field in routetrace packets
+    print('time to live: ', time_to_live)
     print('--------------------------------------')
 
+    emulator_ip_a = emulator_ip.split('.')[0]
+    emulator_ip_b = emulator_ip.split('.')[1]
+    emulator_ip_c = emulator_ip.split('.')[2]
+    emulator_ip_d = emulator_ip.split('.')[3]
+
+    dest_ip_a = dest_ip.split('.')[0]
+    dest_ip_b = dest_ip.split('.')[1]
+    dest_ip_c = dest_ip.split('.')[2]
+    dest_ip_d = dest_ip.split('.')[3]
+   
     header = struct.pack(
-        '!cIIIII',
+        '!cIIIIIIIIIIII',
         Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        emulator_ip_a, emulator_ip_b, emulator_ip_c, emulator_ip_d,
+        emulator_port,
+        0, # placeholder value
         time_to_live,
-        source_ip, source_port,
-        dest_ip, dest_port
+        dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
+        dest_port
     )
     data = ''.encode()
+    packet = header + data
+
+    global sock
+    # send the packet back to where it came from
+    sock.sendto(packet, (source_ip, source_port))
+
+def send_hello_ack(my_addr, dest_addr):
+    source_ip = my_addr.split(' ')[0]
+    source_ip_a = source_ip.split('.')[0]
+    source_ip_b = source_ip.split('.')[1]
+    source_ip_c = source_ip.split('.')[2]
+    source_ip_d = source_ip.split('.')[3]
+    source_port = my_addr.split(' ')[1]  
+
+    dest_ip = dest_addr[0]
+    dest_port = dest_addr[1]
+
+    header = struct.pack(
+        '!cIIIIIIIIIIII',
+        Packet_Type.HELLO_ACK.value.encode('ascii'),
+        source_ip_a, source_ip_b, source_ip_c, source_ip_d,
+        source_port,
+        0, 0, 0, 0, 0, 0, 0, # placeholder values
+    )
+    data = 'ack'.encode()
     packet = header + data
 
     global sock
@@ -220,12 +266,11 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
         dest_port = neighbor.split(' ')[1]
 
         header = struct.pack(
-            '!cIIIIIII',
+            '!cIIIIIIIIIIII',
             Packet_Type.HELLO_MESSAGE.value.encode('ascii'),
             source_ip_a, source_ip_b, source_ip_c, source_ip_d,
             source_port,
-            0, # placeholder
-            0 # placeholder
+            0, 0, 0, 0, 0, 0, 0, # placeholder values
         )
         data = 'hello'.encode()
         packet = header + data
@@ -242,7 +287,7 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
     source_port = my_addr.split(' ')[1] 
 
     for neighbor in neighboring_nodes:
-        print('neighbor: ', neighbor)
+        print('sending link state message to neighbor: ', neighbor)
         dest_ip = neighbor.split(' ')[0]
         dest_port = neighbor.split(' ')[1]
 
@@ -250,13 +295,15 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes):
         sequence_number = 0
         # ttl = 0
 
-        header = struct.pack('!cIIIIIII', 
+        header = struct.pack('!cIIIIIIIIIIII', 
         Packet_Type.LINK_STATE_MESSAGE.value.encode('ascii'),
         source_ip_a, source_ip_b, source_ip_c, source_ip_d,
         source_port,
         sequence_number,
-        time_to_live)
-        data = 'hello'.encode()
+        time_to_live,
+        0, 0, 0 , 0, 0 # placeholder values
+        )
+        data = pickle.dumps(neighboring_nodes)
 
         packet = header + data
         
@@ -287,13 +334,27 @@ def epoch_time_in_milliseconds_now():
     # print("Milliseconds since epoch:", time_now_in_milliseconds)
     return time_now_in_milliseconds
 
-def decrement_time_to_live(packet_type, time_to_live, source_ip, source_port, dest_ip, dest_port):
+def decrement_time_to_live(source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data):
+    print('decrementing time to live in routetrace packet')
+    source_ip_a = source_ip.split('.')[0]
+    source_ip_b = source_ip.split('.')[1]
+    source_ip_c = source_ip.split('.')[2]
+    source_ip_d = source_ip.split('.')[3]
+
+    dest_ip_a = dest_ip.split('.')[0]
+    dest_ip_b = dest_ip.split('.')[1]
+    dest_ip_c = dest_ip.split('.')[2]
+    dest_ip_d = dest_ip.split('.')[3]
+   
     header = struct.pack(
-        '!cIIIII',
-        packet_type.encode('ascii'),
+        '!cIIIIIIIIIIII',
+        Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        source_ip_a, source_ip_b, source_ip_c, source_ip_d,
+        source_port,
+        sequence_number, # this field is unused 
         time_to_live - 1,
-        source_ip, source_port,
-        dest_ip, dest_port
+        dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
+        dest_port
     )
     data = ''.encode()
     packet = header + data
@@ -359,27 +420,37 @@ while True:
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
         if packet:
-            packet_type, source_ip, source_port, sequence_number, time_to_live, data = parse_packet(packet)
+            packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
             
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
+               send_hello_ack(my_addr, sender_full_address)
+
+            if packet_type == Packet_Type.HELLO_ACK.value:
+                print('received hello packet from: ', sender_full_address)
                 network_topology = update_network_topology(original_network_topology, available_neighbors)
                 forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
                 neighboring_nodes = network_topology[my_addr]
                 received_hello_message[sender_full_address] = True
 
             if packet_type == Packet_Type.LINK_STATE_MESSAGE.value:
+                print('received link state packet from: ', sender_full_address)
+                senders_neighboring_nodes = pickle.loads(data)
+                # update available_neighbors
+                # update network topology
+                # update forwarding table
                 pass
 
             if packet_type == Packet_Type.ROUTE_TRACE.value:
+                print('received routetrace packet from:', sender_full_address)
                 if time_to_live == 0:
-                    # send_routetrace_packet(time_to_live, emulator_ip, emulator_port, dest_ip, dest_port)
-                    pass
+                    print('time to live is 0')
+                    send_routetrace_packet(packet_type, emulator_ip, emulator_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
                 else:
-                    # packet = decrement_time_to_live(packet_type, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port)
-                    # dest_addr = dest_ip + ':' + str(dest_port)
-                    # next_hop = forwarding_table[dest_addr]
-                    # sock.sendto(packet, (next_hop.split(':')[0], next_hop.split(':')[0]))
-                    pass
+                    packet = decrement_time_to_live(source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                    dest_addr = dest_ip + ':' + str(dest_port)
+                    next_hop = forwarding_table[dest_addr]
+                    print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
+                    sock.sendto(packet, (next_hop.split(':')[0], next_hop.split(':')[0]))
 
         if hello_receipt_expiry is not None and epoch_time_in_milliseconds_now() > hello_receipt_expiry:
             for node in available_neighbors:
@@ -390,6 +461,7 @@ while True:
             send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
 
             for node in received_hello_message:
+                print('resetting received_hello_messages to all false')
                 received_hello_message[node] = False  
 
     except:
