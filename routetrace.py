@@ -44,28 +44,28 @@ def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port
     sock.sendto(packet, (dest_ip, dest_port))
 
 def parse_packet(packet):
-    encapsulation_header = struct.unpack('!BBBBBhBBBBhI', packet[:17]) # first unpack and get encapsulation header
-
-    header = struct.unpack('!cIIIII', packet[:22])
+    header = struct.unpack('!cIIIIIIIIIIII', packet[:50])
     packet_type = header[0].decode('ascii')
-    time_to_live = header[1]
-    source_ip = header[2] 
-    source_port = header[3]
-    dest_ip = header[4]
-    dest_port = header[5]
+    source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
+    source_port = header[5]
+    sequence_number = header[6]
+    ttl = header[7]
 
-    data = packet[17:].decode()
+    dest_ip = str(header[8]) + '.' + str(header[9]) + '.' + str(header[10]) + '.' + str(header[11])
+    dest_port = header[12]
+
+    data = packet[50:].decode()
 
     print('-----------------------------')
     print('INCOMING PACKET:')
     print('packet type: ', packet_type)
-    print('time to live: ', time_to_live)
     print('source ip: ', source_ip, ', source port: ', source_port)
     print('dest ip: ', dest_ip, ', dest port: ', dest_port)
+    print('sequence number: ', sequence_number)
+    print('time to live: ', ttl)
     print('data: ', data)
     print('-----------------------------')
     
-    # return packet_type, time_to_live, source_ip, source_port, dest_ip, dest_port
     return source_ip, source_port
 
 args = parse_command_line_args()
@@ -85,6 +85,7 @@ sock.bind((routetrace_hostname, routetrace_port))
 time_to_live = 0
 while True:
     send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
+
     packet_with_header, sender_address = sock.recvfrom(1024)
 
     responder_ip, responder_port = parse_packet(packet_with_header)
