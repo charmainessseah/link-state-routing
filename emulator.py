@@ -398,6 +398,7 @@ my_addr = emulator_ip + ':' + str(emulator_port)
 my_addr = '1.0.0.0:1'
 
 original_network_topology = read_topology(topology_filename)
+lsp_sequence_number = 0
 
 # active_neighbors = { ip:port : True/ False }
 # we will init all neighbors to be active initially
@@ -423,7 +424,19 @@ while True:
             packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
             
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
-               send_hello_ack(my_addr, sender_full_address)
+                send_hello_ack(my_addr, sender_full_address)
+
+                node_came_alive = False
+                for node in available_neighbors:
+                    if not available_neighbors[node]:
+                        node_came_alive = True
+                        available_neighbors[node] = True
+                        network_topology = update_network_topology(original_network_topology, available_neighbors)
+                        forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
+                        neighboring_nodes = network_topology[my_addr]
+
+                if node_came_alive:
+                    send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
 
             if packet_type == Packet_Type.HELLO_ACK.value:
                 print('received hello packet from: ', sender_full_address)
@@ -438,6 +451,11 @@ while True:
                 # update available_neighbors
                 # update network topology
                 # update forwarding table
+                # forward this link state packet; rmb to decrement ttl
+
+                if time_to_live == 0:
+                    # delete this lsp
+                    pass
                 pass
 
             if packet_type == Packet_Type.ROUTE_TRACE.value:
@@ -453,12 +471,17 @@ while True:
                     sock.sendto(packet, (next_hop.split(':')[0], next_hop.split(':')[0]))
 
         if hello_receipt_expiry is not None and epoch_time_in_milliseconds_now() > hello_receipt_expiry:
+            node_went_down = False
             for node in available_neighbors:
-                if not received_hello_message[node]:
+                if available_neighbors[node] and not received_hello_message[node]:
+                    node_went_down = True
+                    available_neighbors[node] = False
                     network_topology = update_network_topology(original_network_topology, available_neighbors)
                     forwarding_table = find_shortest_path_and_return_forwarding_table(network_topology)
                     neighboring_nodes = network_topology[my_addr]
-            send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
+
+            if node_went_down:
+                send_link_state_message_to_neighbors(my_addr, neighboring_nodes)
 
             for node in received_hello_message:
                 print('resetting received_hello_messages to all false')
