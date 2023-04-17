@@ -342,7 +342,7 @@ def epoch_time_in_milliseconds_now():
     return time_now_in_milliseconds
 
 def decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data):
-    print('decrementing time to live in routetrace packet')
+    print('decrementing time to live in a packet')
     source_ip_a = source_ip.split('.')[0]
     source_ip_b = source_ip.split('.')[1]
     source_ip_c = source_ip.split('.')[2]
@@ -355,10 +355,10 @@ def decrement_time_to_live(packet_type, source_ip, source_port, sequence_number,
    
     header = struct.pack(
         '!cIIIIIIIIIIII',
-        Packet_Type.ROUTE_TRACE.value.encode('ascii'),
+        packet_type.encode('ascii'),
         source_ip_a, source_ip_b, source_ip_c, source_ip_d,
         source_port,
-        sequence_number, # this field is unused 
+        sequence_number,
         time_to_live - 1,
         dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
         dest_port
@@ -393,38 +393,17 @@ def update_network_topology(original_network_topology, available_nodes):
 
     return updated_network_topology
 
-def forward_link_state_packet_to_neighbors(neighboring_nodes, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data):
+def forward_link_state_packet_to_neighbors(packet, neighboring_nodes):
     # we are forwarding the LSM as is that we received from a neighbor
     print('FORWARDING LSM TO NEIGHBORS')
-
-    time_to_live = time_to_live - 1
-   
-    source_ip_a = source_ip.split('.')[0]
-    source_ip_b = source_ip.split('.')[1]
-    source_ip_c = source_ip.split('.')[2]
-    source_ip_d = source_ip.split('.')[3]
 
     for neighbor in neighboring_nodes:
         print('forwarding link state message to neighbor: ', neighbor)
         dest_ip = neighbor.split(' ')[0]
         dest_port = neighbor.split(' ')[1]
 
-        header = struct.pack('!cIIIIIIIIIIII', 
-        Packet_Type.LINK_STATE_MESSAGE.value.encode('ascii'),
-        source_ip_a, source_ip_b, source_ip_c, source_ip_d,
-        source_port,
-        sequence_number,
-        time_to_live,
-        0, 0, 0 , 0, 0 # placeholder values
-        )
-        data = pickle.dumps(neighboring_nodes)
-
-        packet = header + data
-        
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
-
-    pass
 
 args = parse_command_line_args()
 emulator_port = args.port
@@ -510,7 +489,9 @@ while True:
                         forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
                         # just forward to all original neighbors even though some may be down
                         neighboring_nodes = original_network_topology[my_addr]
-                        forward_link_state_packet_to_neighbors(neighboring_nodes, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                        
+                        packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                        forward_link_state_packet_to_neighbors(packet, neighboring_nodes)
 
                     if time_to_live == 0:
                         link_state_packet_data = None
@@ -521,7 +502,7 @@ while True:
                     print('time to live is 0')
                     send_routetrace_packet(packet_type, emulator_ip, emulator_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
                 else:
-                    packet = decrement_time_to_live(source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                    packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
                     dest_addr = dest_ip + ':' + str(dest_port)
                     next_hop = forwarding_table[dest_addr]
                     print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
