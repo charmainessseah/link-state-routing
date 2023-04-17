@@ -6,6 +6,7 @@ import socket
 import sys
 import struct
 import time
+import json
 
 class Packet_Type(Enum):
     HELLO_MESSAGE = 'H'
@@ -48,7 +49,8 @@ def read_topology(filename):
             if node not in network_topology[source_node]:
                 network_topology[source_node].append(node)
 
-    print(network_topology)
+    print('original network topology:')
+    print(json.dumps(network_topology, indent=4))
     return network_topology
 
 paths = []
@@ -56,14 +58,14 @@ path = []
 # prints out source and dest as well as the distance
 def print_solution(start_node, distances, parents, index_to_node_map):
     num_nodes = len(distances)
-    print("         node\t\t\t      Distance\t\t\t Path")
+    # print("         node\t\t\t      Distance\t\t\t Path")
     
     start_addr = index_to_node_map[start_node]
     for node_index in range(num_nodes):
         if node_index != start_node:
             dest_addr = index_to_node_map[node_index]
 
-            print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
+            # print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
             print_path(node_index, parents, index_to_node_map)
 
             global path
@@ -82,7 +84,7 @@ def print_path(current_node, parents, index_to_node_map):
 
     curr_addr = index_to_node_map[current_node]
     path.append(curr_addr)
-    print(curr_addr, end=" ")
+    # print(curr_addr, end=" ")
 
 def construct_forwarding_table(all_paths):
     # { dest: next_hop }
@@ -132,12 +134,12 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
                 min_distance[node_index] = shortest_distance + edge_distance
  
     all_paths = print_solution(start_node, min_distance, parents, index_to_node_map)
-    print('\nALL PATHS:')
-    print(all_paths)
+    # print('\nALL PATHS:')
+    # print(all_paths)
 
     forwarding_table = construct_forwarding_table(all_paths)
     print('FORWARDING TABLE:')
-    print(forwarding_table)
+    print(json.dumps(forwarding_table, indent=4))
     return forwarding_table
 
 def construct_adjacency_matrix(network_topology):
@@ -162,8 +164,8 @@ def construct_adjacency_matrix(network_topology):
             adjacency_matrix[node_index][neighbor_index] = 1
             adjacency_matrix[neighbor_index][node_index] = 1
 
-    print('ADJACENCY MATRIX: ')
-    print(adjacency_matrix)
+    # print('ADJACENCY MATRIX: ')
+    # print(adjacency_matrix)
     return adjacency_matrix, index_to_node_map, node_to_index_map
 
 def parse_packet(packet):
@@ -316,7 +318,7 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
 # finds the shortest path between all nodes from source to dest
 # and returns an updated forwarding table
 def find_shortest_path_and_return_forwarding_table(my_addr, network_topology):
-    print('FINDING SHORTEST PATH AND BUILDING FORWARDING TABLE')
+    # print('FINDING SHORTEST PATH AND BUILDING FORWARDING TABLE')
     adjacency_matrix, index_to_node_map, node_to_index_map = construct_adjacency_matrix(network_topology)
     starting_node = node_to_index_map[my_addr] # this should be the emulator's node
     forwarding_table = dijkstra(adjacency_matrix, starting_node, index_to_node_map)
@@ -435,10 +437,9 @@ received_hello_message = init_received_hello_message(original_network_topology[m
 hello_timer_expiry = None
 
 network_topology = copy.deepcopy(original_network_topology)
+forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
 while True:
     try:
-        forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-
         # send Hello Message every 10 seconds to neighbors
         time_now = epoch_time_in_milliseconds_now()
         if hello_timer_expiry is None or time_now > hello_timer_expiry:
