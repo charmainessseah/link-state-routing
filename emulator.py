@@ -398,6 +398,8 @@ def update_network_topology(original_network_topology, available_nodes):
         if node in unavailable_nodes and node in neighbors:
             neighbors.remove(node)
 
+    print('updated network topology: ')
+    print(json.dumps(update_network_topology, indent=4))
     return updated_network_topology
 
 def forward_link_state_packet_to_neighbors(packet, neighboring_nodes):
