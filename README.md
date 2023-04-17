@@ -49,3 +49,10 @@
 questions:
 - what is the ttl when sending a new link state packet
 - format for sending neighboring nodes and cost of a link state packet
+
+TODO:
+what to send for link state packet? neighboring nodes? how does that work if I am
+forwarding the neighboring nodes from node A and I am node C by now... 
+just neighboring nodes? or cost? why does it need to send the cost?
+
+do we send hello message to only active neighbors? or all neighbors in the original topology?
