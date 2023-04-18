@@ -358,15 +358,15 @@ def epoch_time_in_milliseconds_now():
 
 def decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data):
     print('decrementing time to live in a packet')
-    source_ip_a = source_ip.split('.')[0]
-    source_ip_b = source_ip.split('.')[1]
-    source_ip_c = source_ip.split('.')[2]
-    source_ip_d = source_ip.split('.')[3]
+    source_ip_a = int(source_ip.split('.')[0])
+    source_ip_b = int(source_ip.split('.')[1])
+    source_ip_c = int(source_ip.split('.')[2])
+    source_ip_d = int(source_ip.split('.')[3])
 
-    dest_ip_a = dest_ip.split('.')[0]
-    dest_ip_b = dest_ip.split('.')[1]
-    dest_ip_c = dest_ip.split('.')[2]
-    dest_ip_d = dest_ip.split('.')[3]
+    dest_ip_a = int(dest_ip.split('.')[0])
+    dest_ip_b = int(dest_ip.split('.')[1])
+    dest_ip_c = int(dest_ip.split('.')[2])
+    dest_ip_d = int(dest_ip.split('.')[3])
    
     header = struct.pack(
         '!cIIIIIIIIIIII',
@@ -452,7 +452,7 @@ forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, netwo
 while True:
     try:
         # send Hello Message every 10 seconds to neighbors
-        time_now = epoch_time_in_milliseconds_now()
+        """        time_now = epoch_time_in_milliseconds_now()
         if hello_timer_expiry is None or time_now > hello_timer_expiry:
 
             if hello_timer_expiry is not None:
@@ -477,8 +477,8 @@ while True:
 
             hello_timer_expiry = time_now + 10000
             neighboring_nodes = network_topology[my_addr]
-            send_hello_message_to_neighbors(my_addr, neighboring_nodes)
-
+            send_hello_message_to_neighbors(my_addr, neighboring_nodes) """
+        
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
 
@@ -533,11 +533,15 @@ while True:
                     print('time to live is 0')
                     send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
                 else:
+                    print('ttl is not 0')
                     packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
                     dest_addr = dest_ip + ':' + str(dest_port)
                     next_hop = forwarding_table[dest_addr]
                     print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
-                    sock.sendto(packet, (next_hop.split(':')[0], next_hop.split(':')[0]))
+                    next_hop_ip = next_hop.split(':')[0]
+                    next_hop_port = int(next_hop.split(':')[1])
+                    print('next hop ip: ', next_hop_ip, ', next hop port: ', next_hop_port)
+                    sock.sendto(packet, (next_hop_ip, next_hop_port))
 
     except:
         pass
