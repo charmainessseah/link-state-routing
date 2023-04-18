@@ -425,7 +425,7 @@ sock.bind((emulator_hostname, emulator_port))
 sock.setblocking(0) # receive packets in a non-blocking way
 
 my_addr = emulator_ip + ':' + str(emulator_port)
-my_addr = '1.0.0.0:1' # TODO: remove this
+# my_addr = '1.0.0.0:1' # TODO: remove this
 
 original_network_topology = read_topology(topology_filename)
 lsp_sequence_number = -1
