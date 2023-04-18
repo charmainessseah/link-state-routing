@@ -175,18 +175,17 @@ def construct_adjacency_matrix(network_topology):
     return adjacency_matrix, index_to_node_map, node_to_index_map
 
 def parse_packet(packet):
-    header = struct.unpack('!cIIIIIIIIIIII', packet[:50])
+    print('here1')
+    header = struct.unpack('!cIIIIIIIIIIII', packet[:49])
     packet_type = header[0].decode('ascii')
     source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
     source_port = header[5]
     sequence_number = header[6]
     ttl = header[7]
-
     dest_ip = str(header[8]) + '.' + str(header[9]) + '.' + str(header[10]) + '.' + str(header[11])
     dest_port = header[12]
-
     data = packet[50:].decode()
-
+    
     print('-----------------------------')
     print('INCOMING PACKET:')
     print('packet type: ', packet_type)
@@ -265,25 +264,31 @@ def send_hello_ack(my_addr, dest_addr):
     sock.sendto(packet, (dest_ip, dest_port))
 
 def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
-    print('SENDING HELLO MESSAGE')
-    source_ip = my_addr.split(' ')[0]
-    source_ip_a = source_ip.split('.')[0]
-    source_ip_b = source_ip.split('.')[1]
-    source_ip_c = source_ip.split('.')[2]
-    source_ip_d = source_ip.split('.')[3]
-    source_port = my_addr.split(' ')[1] 
+    print('SENDING HELLO MESSAGE - my addr is: ', my_addr)
+    print('my neighboring nodes: ')
+    print(neighboring_nodes)
+    source_ip = my_addr.split(':')[0]
+    source_ip_a = int(source_ip.split('.')[0])
+    source_ip_b = int(source_ip.split('.')[1])
+    source_ip_c = int(source_ip.split('.')[2])
+    source_ip_d = int(source_ip.split('.')[3])
+    source_port = int(my_addr.split(':')[1])
 
     for neighbor in neighboring_nodes:
-        # print('neighbor: ', neighbor)
-        dest_ip = neighbor.split(' ')[0]
-        dest_port = neighbor.split(' ')[1]
+        print('sending to neighbor: ', neighbor)
+        dest_ip = neighbor.split(':')[0]
+        dest_port = int(neighbor.split(':')[1])
 
         header = struct.pack(
             '!cIIIIIIIIIIII',
             Packet_Type.HELLO_MESSAGE.value.encode('ascii'),
             source_ip_a, source_ip_b, source_ip_c, source_ip_d,
             source_port,
-            0, 0, 0, 0, 0, 0, 0, # placeholder values
+            # placeholder values
+            0, # seq num
+            0, # ttl
+            0, 0, 0, 0, #dest ip 
+            0 # dest port
         )
         data = 'hello'.encode()
         packet = header + data
@@ -293,17 +298,17 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
 
 def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_number):
     print('SENDING LSM TO NEIGHBORS')
-    source_ip = my_addr.split(' ')[0]
+    source_ip = my_addr.split(':')[0]
     source_ip_a = source_ip.split('.')[0]
     source_ip_b = source_ip.split('.')[1]
     source_ip_c = source_ip.split('.')[2]
     source_ip_d = source_ip.split('.')[3]
-    source_port = my_addr.split(' ')[1] 
+    source_port = my_addr.split(':')[1] 
 
     for neighbor in neighboring_nodes:
         print('sending link state message to neighbor: ', neighbor)
-        dest_ip = neighbor.split(' ')[0]
-        dest_port = neighbor.split(' ')[1]
+        dest_ip = neighbor.split(':')[0]
+        dest_port = neighbor.split(':')[1]
 
         # TODO: what should the ttl be?
         ttl = 0
@@ -416,8 +421,8 @@ def forward_link_state_packet_to_neighbors(packet, neighboring_nodes):
 
     for neighbor in neighboring_nodes:
         print('forwarding link state message to neighbor: ', neighbor)
-        dest_ip = neighbor.split(' ')[0]
-        dest_port = neighbor.split(' ')[1]
+        dest_ip = neighbor.split(':')[0]
+        dest_port = neighbor.split(':')[1]
 
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
@@ -485,7 +490,7 @@ while True:
         if packet:
             print('RECEIVED A PACKET!!')
             packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
- 
+            print('after parse packet method') 
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
                 print('received hello from: ', sender_full_address)
 
