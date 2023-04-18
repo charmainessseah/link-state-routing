@@ -352,7 +352,7 @@ def init_received_hello_message(list_of_neighbors):
     received_hello_message = {}
 
     for node in list_of_neighbors:
-        received_hello_message = False
+        received_hello_message[node] = False
 
     return received_hello_message 
 
@@ -451,24 +451,64 @@ link_state_packet_data = None
 available_nodes = init_available_nodes(original_network_topology)
 received_hello_message = init_received_hello_message(original_network_topology[my_addr])
 hello_timer_expiry = None
+print('INITIAL received hello message dict:')
+print(json.dumps(received_hello_message, indent=4))
+
 
 network_topology = copy.deepcopy(original_network_topology)
 forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
 while True:
     try:
         # send Hello Message every 10 seconds to neighbors
+        #print('hello timer expiry is none: ', hello_timer_expiry is None)
         time_now = epoch_time_in_milliseconds_now()
-        if hello_timer_expiry is None or time_now > hello_timer_expiry:
-
-            if hello_timer_expiry is not None:
+        if hello_timer_expiry == None or time_now > hello_timer_expiry:
+            print('check - time now: ', time_now, ', hello timer expiry:', hello_timer_expiry)
+            print('check - avail nodes: ')
+            print(json.dumps(available_nodes, indent=4))
+            print('check - hello received dict: ')
+            print(json.dumps(received_hello_message, indent=4))
+            if hello_timer_expiry !=  None:
+                print('hello timer is not none')
+        
                 # check and update network topology based on received hello messages
-                node_went_down = False
-                for node in available_nodes:
-                    if available_nodes[node] and not received_hello_message[node]:
-                        node_went_down = True # change in node status
-                        available_nodes[node] = False
+                
+                #node_went_down = False
+                #for node in available_nodes:
+                #    if available_nodes[node] and not received_hello_message[node]:
+                #        node_went_down = True # change in node status
+                #        available_nodes[node] = False
 
-                    if node_went_down:
+                 #   if node_went_down:
+                 #       network_topology = update_network_topology(original_network_topology, available_nodes)
+                 #       forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+                 #       neighboring_nodes = network_topology[my_addr]
+
+                  #      send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
+                  #      lsp_sequence_number += 1
+
+                 #   for node in received_hello_message:
+                  #      print('resetting received_hello_messages to all false')
+                  #      received_hello_message[node] = False
+
+            print('resetting the timer, time now: ', time_now)
+            hello_timer_expiry = time_now + 10000
+            neighboring_nodes = network_topology[my_addr]
+            send_hello_message_to_neighbors(my_addr, neighboring_nodes)
+        
+            packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
+            sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
+
+            if packet:
+                print('RECEIVED A PACKET!!')
+                packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
+                
+                if packet_type == Packet_Type.HELLO_MESSAGE.value:
+                    print('received hello from: ', sender_full_address)
+                    available_nodes[sender_full_address] = True
+                    received_hello_message[sender_full_address] = True
+
+                    if not available_nodes[sender_full_address]:
                         network_topology = update_network_topology(original_network_topology, available_nodes)
                         forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
                         neighboring_nodes = network_topology[my_addr]
@@ -476,77 +516,45 @@ while True:
                         send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
                         lsp_sequence_number += 1
 
-                    for node in received_hello_message:
-                        print('resetting received_hello_messages to all false')
-                        received_hello_message[node] = False  
+                if packet_type == Packet_Type.LINK_STATE_MESSAGE.value:
+                    print('received link state packet from: ', sender_full_address)
+                    curr_node = source_ip + ':' + str(source_port)
+                    print('source of link state packed originally from: ', curr_node)
+                    if link_state_packet_data is None or sequence_number > lsp_sequence_number:
+                        lsp_sequence_number = sequence_number
 
-            hello_timer_expiry = time_now + 10000
-            neighboring_nodes = network_topology[my_addr]
-            send_hello_message_to_neighbors(my_addr, neighboring_nodes)
-        
-        packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
-        sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
-
-        if packet:
-            print('RECEIVED A PACKET!!')
-            packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
-            print('after parse packet method') 
-            if packet_type == Packet_Type.HELLO_MESSAGE.value:
-                print('received hello from: ', sender_full_address)
-
-                node_came_alive = False
-                for node in available_nodes:
-                    if not available_nodes[node]:
-                        node_came_alive = True # change in node state
-                        available_nodes[node] = True
+                        senders_available_neighboring_nodes = pickle.loads(data)
+                        original_senders_available_nodes = original_network_topology[curr_node]
+                        nodes_that_went_down = [node for node in original_senders_available_nodes if node not in senders_available_neighboring_nodes]
                         
-                if node_came_alive:
-                    network_topology = update_network_topology(original_network_topology, available_nodes)
-                    forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-                    neighboring_nodes = network_topology[my_addr]
+                        for node in nodes_that_went_down:
+                            available_nodes[node] = False
+                            network_topology = update_network_topology(original_network_topology, available_nodes)
+                            forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+                            # just forward to all original neighbors even though some may be down
+                            neighboring_nodes = original_network_topology[my_addr]
 
-                    send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
-                    lsp_sequence_number += 1
+                            packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                            forward_link_state_packet_to_neighbors(packet, neighboring_nodes)
 
-            if packet_type == Packet_Type.LINK_STATE_MESSAGE.value:
-                print('received link state packet from: ', sender_full_address)
-                curr_node = source_ip + ':' + str(source_port)
-                print('source of link state packed originally from: ', curr_node)
-                if link_state_packet_data is None or sequence_number > lsp_sequence_number:
-                    lsp_sequence_number = sequence_number
+                        if time_to_live == 0:
+                            link_state_packet_data = None
 
-                    senders_available_neighboring_nodes = pickle.loads(data)
-                    original_senders_available_nodes = original_network_topology[curr_node]
-                    nodes_that_went_down = [node for node in original_senders_available_nodes if node not in senders_available_neighboring_nodes]
-                    
-                    for node in nodes_that_went_down:
-                        available_nodes[node] = False
-                        network_topology = update_network_topology(original_network_topology, available_nodes)
-                        forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-                        # just forward to all original neighbors even though some may be down
-                        neighboring_nodes = original_network_topology[my_addr]
-
-                        packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
-                        forward_link_state_packet_to_neighbors(packet, neighboring_nodes)
-
+                if packet_type == Packet_Type.ROUTE_TRACE.value:
+                    print('received routetrace packet from:', sender_full_address)
                     if time_to_live == 0:
-                        link_state_packet_data = None
-
-            if packet_type == Packet_Type.ROUTE_TRACE.value:
-                print('received routetrace packet from:', sender_full_address)
-                if time_to_live == 0:
-                    print('time to live is 0')
-                    send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
-                else:
-                    print('ttl is not 0')
-                    packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
-                    dest_addr = dest_ip + ':' + str(dest_port)
-                    next_hop = forwarding_table[dest_addr]
-                    print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
-                    next_hop_ip = next_hop.split(':')[0]
-                    next_hop_port = int(next_hop.split(':')[1])
-                    print('next hop ip: ', next_hop_ip, ', next hop port: ', next_hop_port)
-                    sock.sendto(packet, (next_hop_ip, next_hop_port))
+                        print('time to live is 0')
+                        send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
+                    else:
+                        print('ttl is not 0')
+                        packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
+                        dest_addr = dest_ip + ':' + str(dest_port)
+                        next_hop = forwarding_table[dest_addr]
+                        print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
+                        next_hop_ip = next_hop.split(':')[0]
+                        next_hop_port = int(next_hop.split(':')[1])
+                        print('next hop ip: ', next_hop_ip, ', next hop port: ', next_hop_port)
+                        sock.sendto(packet, (next_hop_ip, next_hop_port))
 
     except:
         pass
