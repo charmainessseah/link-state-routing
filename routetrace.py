@@ -21,29 +21,29 @@ def parse_command_line_args():
     args = parser.parse_args()
     return args
 
-def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option):
+def send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option):
     print('--------------------------------------')
-    print('SENDING ROUTETRACE PACKET:')
+    print('SENDING ROUTETRACE PACKET to:', source_ip, ':', str(source_port))
     print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
     print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
     print('time to live: ', time_to_live)
     print('debug option: ', debug_option)
     print('--------------------------------------')
-    routetrace_ip_a = routetrace_ip.split('.')[0]
-    routetrace_ip_b = routetrace_ip.split('.')[1]
-    routetrace_ip_c = routetrace_ip.split('.')[2]
-    routetrace_ip_d = routetrace_ip.split('.')[3]
+    routetrace_ip_a = int(routetrace_ip.split('.')[0])
+    routetrace_ip_b = int(routetrace_ip.split('.')[1])
+    routetrace_ip_c = int(routetrace_ip.split('.')[2])
+    routetrace_ip_d = int(routetrace_ip.split('.')[3])
 
-    dest_ip_a = dest_ip.split('.')[0]
-    dest_ip_b = dest_ip.split('.')[1]
-    dest_ip_c = dest_ip.split('.')[2]
-    dest_ip_d = dest_ip.split('.')[3]
+    dest_ip_a = int(dest_ip.split('.')[0])
+    dest_ip_b = int(dest_ip.split('.')[1])
+    dest_ip_c = int(dest_ip.split('.')[2])
+    dest_ip_d = int(dest_ip.split('.')[3])
    
     header = struct.pack(
         '!cIIIIIIIIIIII',
         Packet_Type.ROUTE_TRACE.value.encode('ascii'),
         routetrace_ip_a, routetrace_ip_b, routetrace_ip_c, routetrace_ip_d,
-        source_port,
+        routetrace_port,
         0, # placeholder values,
         time_to_live,
         dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
@@ -53,9 +53,10 @@ def send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port
     packet = header + data
 
     global sock
-    sock.sendto(packet, (dest_ip, dest_port))
+    sock.sendto(packet, (source_ip, source_port))
 
 def parse_packet(packet):
+    print('parsing packet')
     header = struct.unpack('!cIIIIIIIIIIII', packet[:50])
     packet_type = header[0].decode('ascii')
     source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
@@ -83,6 +84,7 @@ def parse_packet(packet):
 args = parse_command_line_args()
 routetrace_port = args.routetrace_port
 source_hostname = args.source_hostname
+source_ip = socket.gethostbyname(source_hostname)
 source_port = args.source_port
 dest_hostname = args.dest_hostname
 dest_ip = socket.gethostbyname(dest_hostname)
@@ -93,13 +95,16 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 routetrace_hostname = socket.gethostname()
 routetrace_ip = socket.gethostbyname(routetrace_hostname)
 sock.bind((routetrace_hostname, routetrace_port))
+print('MY ADDRESS IS: ', routetrace_hostname, ':', routetrace_port)
 
 time_to_live = 0
 while True:
-    send_packet(time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
+    send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
 
+    print('waiting for response....')
     packet_with_header, sender_address = sock.recvfrom(1024)
 
+    print('received response from: ', sender_address)
     responder_ip, responder_port = parse_packet(packet_with_header)
     
     if responder_ip == dest_ip and responder_port == dest_port:

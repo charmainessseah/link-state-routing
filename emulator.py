@@ -42,10 +42,16 @@ def read_topology(filename):
 
     for line in file_lines:
         nodes_in_line = line.split()
-        source_node = nodes_in_line[0].replace(",", ":")
+        source_hostname = nodes_in_line[0].split(',')[0]
+        source_port = nodes_in_line[0].split(',')[1]
+        source_ip = socket.gethostbyname(source_hostname)
+        source_node = source_ip + ':' + source_port
         network_topology[source_node] = []
         for index in range(1, len(nodes_in_line)):
-            node = nodes_in_line[index].replace(",", ":")
+            node_hostname = nodes_in_line[index].split(',')[0]
+            node_ip = socket.gethostbyname(node_hostname)
+            node_port = nodes_in_line[index].split(',')[1]
+            node = node_ip + ':' + node_port
             if node not in network_topology[source_node]:
                 network_topology[source_node].append(node)
 
@@ -191,11 +197,11 @@ def parse_packet(packet):
     print('data: ', data)
     print('-----------------------------')
     
-    return packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data
+    return packet_type, source_ip, source_port, sequence_number, ttl, dest_ip, dest_port, data
 
 def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port):
     print('--------------------------------------')
-    print('SENDING ROUTETRACE PACKET:')
+    print('SENDING ROUTETRACE PACKET back to the original source addr:')
     print('packet type: ', packet_type)
     print('emulator ip: ', emulator_ip, ', emulator port: ', emulator_port)
     print('source ip: ', source_ip, ', source port: ', source_port)
@@ -204,16 +210,16 @@ def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number,
     print('time to live: ', time_to_live)
     print('--------------------------------------')
 
-    emulator_ip_a = emulator_ip.split('.')[0]
-    emulator_ip_b = emulator_ip.split('.')[1]
-    emulator_ip_c = emulator_ip.split('.')[2]
-    emulator_ip_d = emulator_ip.split('.')[3]
-
-    dest_ip_a = dest_ip.split('.')[0]
-    dest_ip_b = dest_ip.split('.')[1]
-    dest_ip_c = dest_ip.split('.')[2]
-    dest_ip_d = dest_ip.split('.')[3]
-   
+    emulator_ip_a = int(emulator_ip.split('.')[0])
+    emulator_ip_b = int(emulator_ip.split('.')[1])
+    emulator_ip_c = int(emulator_ip.split('.')[2])
+    emulator_ip_d = int(emulator_ip.split('.')[3])
+    
+    dest_ip_a = int(dest_ip.split('.')[0])
+    dest_ip_b = int(dest_ip.split('.')[1])
+    dest_ip_c = int(dest_ip.split('.')[2])
+    dest_ip_d = int(dest_ip.split('.')[3])
+    
     header = struct.pack(
         '!cIIIIIIIIIIII',
         Packet_Type.ROUTE_TRACE.value.encode('ascii'),
@@ -224,9 +230,11 @@ def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number,
         dest_ip_a, dest_ip_b, dest_ip_c, dest_ip_d, 
         dest_port
     )
+    
     data = ''.encode()
     packet = header + data
 
+    print('going to send packet to: ', source_ip, ':', source_port)
     global sock
     # send the packet back to where it came from
     sock.sendto(packet, (source_ip, source_port))
@@ -426,6 +434,7 @@ sock.setblocking(0) # receive packets in a non-blocking way
 
 my_addr = emulator_ip + ':' + str(emulator_port)
 # my_addr = '1.0.0.0:1' # TODO: remove this
+print('MY ADDR IS: ', my_addr)
 
 original_network_topology = read_topology(topology_filename)
 lsp_sequence_number = -1
@@ -474,8 +483,9 @@ while True:
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
 
         if packet:
+            print('RECEIVED A PACKET!!')
             packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
-            
+ 
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
                 print('received hello from: ', sender_full_address)
 
@@ -521,7 +531,7 @@ while True:
                 print('received routetrace packet from:', sender_full_address)
                 if time_to_live == 0:
                     print('time to live is 0')
-                    send_routetrace_packet(packet_type, emulator_ip, emulator_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
+                    send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
                 else:
                     packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
                     dest_addr = dest_ip + ':' + str(dest_port)
