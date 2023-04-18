@@ -452,7 +452,7 @@ forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, netwo
 while True:
     try:
         # send Hello Message every 10 seconds to neighbors
-        """        time_now = epoch_time_in_milliseconds_now()
+        time_now = epoch_time_in_milliseconds_now()
         if hello_timer_expiry is None or time_now > hello_timer_expiry:
 
             if hello_timer_expiry is not None:
@@ -477,7 +477,7 @@ while True:
 
             hello_timer_expiry = time_now + 10000
             neighboring_nodes = network_topology[my_addr]
-            send_hello_message_to_neighbors(my_addr, neighboring_nodes) """
+            send_hello_message_to_neighbors(my_addr, neighboring_nodes)
         
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
