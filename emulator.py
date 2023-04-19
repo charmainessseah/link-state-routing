@@ -8,6 +8,8 @@ import struct
 import time
 import json
 
+# TODO: Send LSM periodically as well!!!
+
 class Packet_Type(Enum):
     HELLO_MESSAGE = 'H'
     LINK_STATE_MESSAGE = 'L'
@@ -194,7 +196,7 @@ def parse_packet(packet):
     ttl = header[7]
     dest_ip = str(header[8]) + '.' + str(header[9]) + '.' + str(header[10]) + '.' + str(header[11])
     dest_port = header[12]
-    data = packet[50:].decode()
+    data = packet[49:].decode()
     
     print('-----------------------------')
     print('INCOMING PACKET:')
@@ -249,7 +251,7 @@ def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number,
     sock.sendto(packet, (source_ip, source_port))
 
 def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
-    #print('SENDING HELLO MESSAGE - my addr is: ', my_addr)
+    print('SENDING HELLO MESSAGE to my neighbors: ', neighboring_nodes)
     #print('my neighboring nodes: ')
     #print(neighboring_nodes)
     source_ip = my_addr.split(':')[0]
@@ -282,7 +284,7 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
         sock.sendto(packet, (dest_ip, dest_port))
 
 def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_number):
-    print('SENDING LSM TO NEIGHBORS')
+    print('SENDING LSM TO NEIGHBORS: ', neighboring_nodes)
     source_ip = my_addr.split(':')[0]
     source_ip_a = source_ip.split('.')[0]
     source_ip_b = source_ip.split('.')[1]
@@ -296,7 +298,7 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
         dest_port = neighbor.split(':')[1]
 
         # TODO: what should the ttl be?
-        ttl = 0
+        ttl = 20
 
         header = struct.pack('!cIIIIIIIIIIII', 
         Packet_Type.LINK_STATE_MESSAGE.value.encode('ascii'),
@@ -426,7 +428,6 @@ sock.bind((emulator_hostname, emulator_port))
 sock.setblocking(0) # receive packets in a non-blocking way
 
 my_addr = emulator_ip + ':' + str(emulator_port)
-# my_addr = '1.0.0.0:1' # TODO: remove this
 print('MY ADDR IS: ', my_addr)
 
 original_network_topology = read_topology(topology_filename)
@@ -478,16 +479,12 @@ while True:
             forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
             print('updated forwarding table:')            
             print(json.dumps(forwarding_table, indent=4))        
-     #       neighboring_nodes = network_topology[my_addr]
+            neighboring_nodes = network_topology[my_addr]
+            
+            # TODO: check that this is sending correctly
+            send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
+            lsp_sequence_number += 1
 
-                  #      send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
-                  #      lsp_sequence_number += 1
-
-                 #   for node in received_hello_message:
-                  #      print('resetting received_hello_messages to all false')
-                  #      received_hello_message[node] = False
-
-                            
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
 
@@ -499,15 +496,15 @@ while True:
                 print('received hello from: ', sender_full_address)
                 
                 # change in status of machine so we do an update
-                #if not available_nodes[sender_full_address]:
-                #   network_topology = update_network_topology(original_network_topology, available_nodes)
-                #   forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+                if not available_nodes[sender_full_address]:
+                    available_nodes[sender_full_address] = True
+                    network_topology = update_network_topology(original_network_topology, available_nodes)
+                    forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+                
                 #   neighboring_nodes = network_topology[my_addr]
-
                  #  send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
                  #  lsp_sequence_number += 1
                 
-                available_nodes[sender_full_address] = True
                 received_hello_message[sender_full_address]["deadline"] = time_now + 4000
                 print('check - avail nodes: ')
                 print(json.dumps(available_nodes, indent=4))
