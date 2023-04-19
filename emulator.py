@@ -59,19 +59,20 @@ def read_topology(filename):
     print(json.dumps(network_topology, indent=4))
     return network_topology
 
-paths = []
 path = []
 # prints out source and dest as well as the distance
 def print_solution(start_node, distances, parents, index_to_node_map):
+    paths = []
+    print('inside print solution method')
     num_nodes = len(distances)
-    # print("         node\t\t\t      Distance\t\t\t Path")
+    print("         node\t\t\t      Distance\t\t\t Path")
     
     start_addr = index_to_node_map[start_node]
     for node_index in range(num_nodes):
         if node_index != start_node:
             dest_addr = index_to_node_map[node_index]
 
-            # print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
+            print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
             print_path(node_index, parents, index_to_node_map)
 
             global path
@@ -83,6 +84,7 @@ def print_solution(start_node, distances, parents, index_to_node_map):
 NO_PARENT = -1
 # prints shortest path between source and dest node using parents array
 def print_path(current_node, parents, index_to_node_map):
+    print('curr node: ', current_node)
     if current_node == NO_PARENT:
         return
     
@@ -90,7 +92,7 @@ def print_path(current_node, parents, index_to_node_map):
 
     curr_addr = index_to_node_map[current_node]
     path.append(curr_addr)
-    # print(curr_addr, end=" ")
+    print('back to curr node: ', current_node, ', curr addr: ', curr_addr)
 
 def construct_forwarding_table(all_paths):
     # { dest: next_hop }
@@ -139,9 +141,11 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
                 parents[node_index] = nearest_node
                 min_distance[node_index] = shortest_distance + edge_distance
  
+    print('start node, parents array: ')
+    print(start_node, parents)
     all_paths = print_solution(start_node, min_distance, parents, index_to_node_map)
-    # print('\nALL PATHS:')
-    # print(all_paths)
+    print('\nALL PATHS:')
+    print(all_paths)
 
     forwarding_table = construct_forwarding_table(all_paths)
     print('FORWARDING TABLE:')
@@ -175,8 +179,8 @@ def construct_adjacency_matrix(network_topology):
             adjacency_matrix[node_index][neighbor_index] = 1
             adjacency_matrix[neighbor_index][node_index] = 1
 
-    # print('ADJACENCY MATRIX: ')
-    # print(adjacency_matrix)
+    print('ADJACENCY MATRIX: ')
+    print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in adjacency_matrix]))
     print('done with constructing adjacency matrix')
     return adjacency_matrix, index_to_node_map, node_to_index_map
 
