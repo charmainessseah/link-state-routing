@@ -150,6 +150,7 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
 
 def construct_adjacency_matrix(network_topology):
     # assign each ip:port node a number for the adjacency matrix
+    print('constructing adjacency matrix')
     num_nodes = len(network_topology)
     index_to_node_map = {}
     node_to_index_map = {}
@@ -161,7 +162,11 @@ def construct_adjacency_matrix(network_topology):
     
     adjacency_matrix = [[0 for column in range(num_nodes)]
                       for row in range(num_nodes)]
-    
+    print('index to node')
+    print(json.dumps(index_to_node_map, indent=4))
+    print('node to index')
+    print(json.dumps(node_to_index_map, indent=4))
+
     for node in network_topology:
         node_index = node_to_index_map[node]
         neighboring_nodes = network_topology[node]
@@ -172,6 +177,7 @@ def construct_adjacency_matrix(network_topology):
 
     # print('ADJACENCY MATRIX: ')
     # print(adjacency_matrix)
+    print('done with constructing adjacency matrix')
     return adjacency_matrix, index_to_node_map, node_to_index_map
 
 def parse_packet(packet):
@@ -237,31 +243,6 @@ def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number,
     global sock
     # send the packet back to where it came from
     sock.sendto(packet, (source_ip, source_port))
-
-def send_hello_ack(my_addr, dest_addr):
-    print('SENDING HELLO ACK')
-    source_ip = my_addr.split(' ')[0]
-    source_ip_a = source_ip.split('.')[0]
-    source_ip_b = source_ip.split('.')[1]
-    source_ip_c = source_ip.split('.')[2]
-    source_ip_d = source_ip.split('.')[3]
-    source_port = my_addr.split(' ')[1]  
-
-    dest_ip = dest_addr[0]
-    dest_port = dest_addr[1]
-
-    header = struct.pack(
-        '!cIIIIIIIIIIII',
-        Packet_Type.HELLO_ACK.value.encode('ascii'),
-        source_ip_a, source_ip_b, source_ip_c, source_ip_d,
-        source_port,
-        0, 0, 0, 0, 0, 0, 0, # placeholder values
-    )
-    data = 'ack'.encode()
-    packet = header + data
-
-    global sock
-    sock.sendto(packet, (dest_ip, dest_port))
 
 def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
     #print('SENDING HELLO MESSAGE - my addr is: ', my_addr)
@@ -331,11 +312,11 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
 # finds the shortest path between all nodes from source to dest
 # and returns an updated forwarding table
 def find_shortest_path_and_return_forwarding_table(my_addr, network_topology):
-    # print('FINDING SHORTEST PATH AND BUILDING FORWARDING TABLE')
+    print('FINDING SHORTEST PATH AND BUILDING FORWARDING TABLE')
     adjacency_matrix, index_to_node_map, node_to_index_map = construct_adjacency_matrix(network_topology)
     starting_node = node_to_index_map[my_addr] # this should be the emulator's node
     forwarding_table = dijkstra(adjacency_matrix, starting_node, index_to_node_map)
-
+    print('done with shortest path')
     return forwarding_table
 
 def init_available_nodes(network_topology):
@@ -407,14 +388,15 @@ def update_network_topology(original_network_topology, available_nodes):
         if not available_nodes[node] and node in updated_network_topology:
             updated_network_topology.pop(node)
             unavailable_nodes.append(node)
-            
+    
     for node in updated_network_topology:
         neighbors = updated_network_topology[node]
-        if node in unavailable_nodes and node in neighbors:
-            neighbors.remove(node)
+        for neighbor in neighbors:
+            if neighbor in unavailable_nodes:
+                neighbors.remove(neighbor)
 
     print('updated network topology: ')
-    print(json.dumps(update_network_topology, indent=4))
+    print(json.dumps(updated_network_topology, indent=4))
     return updated_network_topology
 
 def forward_link_state_packet_to_neighbors(packet, neighboring_nodes):
@@ -488,9 +470,11 @@ while True:
             print('check - hello received dict: ')
             print(json.dumps(received_hello_message, indent=4))
     
-    #            network_topology = update_network_topology(original_network_topology, available_nodes)
-                 #       forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-                 #       neighboring_nodes = network_topology[my_addr]
+            network_topology = update_network_topology(original_network_topology, available_nodes)
+            forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+            print('updated forwarding table:')            
+            print(json.dumps(forwarding_table, indent=4))        
+     #       neighboring_nodes = network_topology[my_addr]
 
                   #      send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
                   #      lsp_sequence_number += 1
