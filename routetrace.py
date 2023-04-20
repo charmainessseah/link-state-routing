@@ -81,6 +81,14 @@ def parse_packet(packet):
     
     return source_ip, source_port
 
+def print_route(route_taken):
+    print("Hop#\t\tIP,Port")
+    num_hops = len(route_taken)
+    for i in range(0, num_hops):
+        hop_number = i + 1
+        addr = route_taken[hop_number]["ip"] + ',' + str(route_taken[hop_number]["port"])
+        print(hop_number, "\t\t\t", addr)
+
 args = parse_command_line_args()
 routetrace_port = args.routetrace_port
 source_hostname = args.source_hostname
@@ -97,6 +105,9 @@ routetrace_ip = socket.gethostbyname(routetrace_hostname)
 sock.bind((routetrace_hostname, routetrace_port))
 print('MY ADDRESS IS: ', routetrace_hostname, ':', routetrace_port)
 
+hop_number = 1
+route_taken = {}
+
 time_to_live = 0
 while True:
     send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
@@ -107,9 +118,16 @@ while True:
     print('received response from: ', sender_address)
     responder_ip, responder_port = parse_packet(packet_with_header)
     
+    route_taken[hop_number] = {}
+    route_taken[hop_number]["ip"] = responder_ip
+    route_taken[hop_number]["port"] = responder_port
+
+    hop_number += 1
+
     if responder_ip == dest_ip and responder_port == dest_port:
         break
     else:
         time_to_live += 1
 
+print_route(route_taken)
 print('routetrace END')
