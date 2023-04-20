@@ -82,12 +82,12 @@ def parse_packet(packet):
     return source_ip, source_port
 
 def print_route(route_taken):
-    print("Hop#\t\tIP,Port")
+    print("Hop#\t IP,Port")
     num_hops = len(route_taken)
     for i in range(0, num_hops):
         hop_number = i + 1
         addr = route_taken[hop_number]["ip"] + ',' + str(route_taken[hop_number]["port"])
-        print(hop_number, "\t\t\t", addr)
+        print(hop_number, "\t", addr)
 
 args = parse_command_line_args()
 routetrace_port = args.routetrace_port
