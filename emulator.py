@@ -430,6 +430,34 @@ def forward_link_state_packet_to_neighbors(packet, neighboring_nodes, original_s
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
 
+def get_ip_and_port_from_full_addr(full_addr):
+    ip = full_addr.split(':')[0]
+    port = full_addr.split(':')[1]
+    return ip, port
+
+def print_topology_and_forwarding_table(network_topology, forwarding_table):
+    print('Topology:')
+    print()
+    for node in network_topology:
+        ip, port = get_ip_and_port_from_full_addr(node)
+        print(ip, ',', port, sep='', end=" ")
+        for neighbor in network_topology[node]:
+            ip, port = get_ip_and_port_from_full_addr(node)
+            print(ip, ',', port, sep='', end=" ")
+        print()
+   
+    print() 
+    print('Forwarding table:')
+    print()
+    for node in forwarding_table:
+        ip, port = get_ip_and_port_from_full_addr(node)
+        print(ip, ',', port, sep='', end=" ")
+
+        next_hop = forwarding_table[node]
+        ip, port = get_ip_and_port_from_full_addr(node)
+        print(ip, ',', port, sep='')
+    print()
+
 args = parse_command_line_args()
 emulator_port = args.port
 topology_filename = args.filename
@@ -441,7 +469,6 @@ sock.bind((emulator_hostname, emulator_port))
 sock.setblocking(0) # receive packets in a non-blocking way
 
 my_addr = emulator_ip + ':' + str(emulator_port)
-print('MY ADDR IS: ', my_addr)
 
 original_network_topology = read_topology(topology_filename)
 lsp_sequence_number = 0
@@ -469,6 +496,8 @@ print(json.dumps(lsp_dict, indent=4))
 
 network_topology = copy.deepcopy(original_network_topology)
 forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
+
+print_topology_and_forwarding_table(original_network_topology, forwarding_table)
 
 while True:
     try:
