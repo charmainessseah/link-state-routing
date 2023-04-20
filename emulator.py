@@ -100,7 +100,7 @@ def construct_forwarding_table(all_paths):
 
     return forwarding_table
 
-def dijkstra(adjacency_matrix, start_node, index_to_node_map):
+def link_state_algorithm(adjacency_matrix, start_node, index_to_node_map):
     num_nodes = len(adjacency_matrix)
 
     # min_distance[i] holds the min distance from start node to i
@@ -305,7 +305,7 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
 def find_shortest_path_and_return_forwarding_table(my_addr, network_topology):
     adjacency_matrix, index_to_node_map, node_to_index_map = construct_adjacency_matrix(network_topology)
     starting_node = node_to_index_map[my_addr] # this should be the emulator's node
-    forwarding_table = dijkstra(adjacency_matrix, starting_node, index_to_node_map)
+    forwarding_table = link_state_algorithm(adjacency_matrix, starting_node, index_to_node_map)
     
     return forwarding_table
 
