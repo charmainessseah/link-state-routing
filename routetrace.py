@@ -22,13 +22,13 @@ def parse_command_line_args():
     return args
 
 def send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option):
-    print('--------------------------------------')
-    print('SENDING ROUTETRACE PACKET to:', source_ip, ':', str(source_port))
-    print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
-    print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
-    print('time to live: ', time_to_live)
-    print('debug option: ', debug_option)
-    print('--------------------------------------')
+    #print('--------------------------------------')
+    #print('SENDING ROUTETRACE PACKET to:', source_ip, ':', str(source_port))
+    #print('routetrace ip: ', routetrace_ip, ', routetrace port: ', routetrace_port)
+    #print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
+    #print('time to live: ', time_to_live)
+    #print('debug option: ', debug_option)
+    #print('--------------------------------------')
     routetrace_ip_a = int(routetrace_ip.split('.')[0])
     routetrace_ip_b = int(routetrace_ip.split('.')[1])
     routetrace_ip_c = int(routetrace_ip.split('.')[2])
@@ -56,7 +56,6 @@ def send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_
     sock.sendto(packet, (source_ip, source_port))
 
 def parse_packet(packet):
-    print('parsing packet')
     header = struct.unpack('!cIIIIIIIIIIII', packet[:50])
     packet_type = header[0].decode('ascii')
     source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
@@ -69,15 +68,15 @@ def parse_packet(packet):
 
     data = packet[50:].decode()
 
-    print('-----------------------------')
-    print('INCOMING PACKET:')
-    print('packet type: ', packet_type)
-    print('source ip: ', source_ip, ', source port: ', source_port)
-    print('dest ip: ', dest_ip, ', dest port: ', dest_port)
+    #print('-----------------------------')
+    #print('INCOMING PACKET:')
+    #print('packet type: ', packet_type)
+    #print('source ip: ', source_ip, ', source port: ', source_port)
+    #print('dest ip: ', dest_ip, ', dest port: ', dest_port)
     #print('sequence number: ', sequence_number) this field is unused in a routetrace packet
-    print('time to live: ', ttl)
-    print('data: ', data)
-    print('-----------------------------')
+    #print('time to live: ', ttl)
+    #print('data: ', data)
+    #print('-----------------------------')
     
     return source_ip, source_port
 
@@ -103,7 +102,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 routetrace_hostname = socket.gethostname()
 routetrace_ip = socket.gethostbyname(routetrace_hostname)
 sock.bind((routetrace_hostname, routetrace_port))
-print('MY ADDRESS IS: ', routetrace_hostname, ':', routetrace_port)
+#print('MY ADDRESS IS: ', routetrace_hostname, ':', routetrace_port)
 
 hop_number = 1
 route_taken = {}
@@ -112,10 +111,8 @@ time_to_live = 0
 while True:
     send_packet(source_ip, source_port, time_to_live, routetrace_ip, routetrace_port, dest_ip, dest_port, debug_option)
 
-    print('waiting for response....')
     packet_with_header, sender_address = sock.recvfrom(1024)
 
-    print('received response from: ', sender_address)
     responder_ip, responder_port = parse_packet(packet_with_header)
     
     route_taken[hop_number] = {}
@@ -130,4 +127,3 @@ while True:
         time_to_live += 1
 
 print_route(route_taken)
-print('routetrace END')

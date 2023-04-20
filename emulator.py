@@ -55,24 +55,21 @@ def read_topology(filename):
             if node not in network_topology[source_node]:
                 network_topology[source_node].append(node)
 
-    print('original network topology:')
-    print(json.dumps(network_topology, indent=4))
     return network_topology
 
 path = []
 # prints out source and dest as well as the distance
 def print_solution(start_node, distances, parents, index_to_node_map):
     paths = []
-    print('inside print solution method')
     num_nodes = len(distances)
-    print("         node\t\t\t      Distance\t\t\t Path")
+    #print("         node\t\t\t      Distance\t\t\t Path")
     
     start_addr = index_to_node_map[start_node]
     for node_index in range(num_nodes):
         if node_index != start_node:
             dest_addr = index_to_node_map[node_index]
 
-            print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
+            #print("\n", start_addr, "->", dest_addr, "\t\t", distances[node_index], "\t\t", end="")
             print_path(node_index, parents, index_to_node_map)
 
             global path
@@ -84,7 +81,6 @@ def print_solution(start_node, distances, parents, index_to_node_map):
 NO_PARENT = -1
 # prints shortest path between source and dest node using parents array
 def print_path(current_node, parents, index_to_node_map):
-    print('curr node: ', current_node)
     if current_node == NO_PARENT:
         return
     
@@ -92,7 +88,6 @@ def print_path(current_node, parents, index_to_node_map):
 
     curr_addr = index_to_node_map[current_node]
     path.append(curr_addr)
-    print('back to curr node: ', current_node, ', curr addr: ', curr_addr)
 
 def construct_forwarding_table(all_paths):
     # { dest: next_hop }
@@ -141,20 +136,15 @@ def dijkstra(adjacency_matrix, start_node, index_to_node_map):
                 parents[node_index] = nearest_node
                 min_distance[node_index] = shortest_distance + edge_distance
  
-    print('start node, parents array: ')
-    print(start_node, parents)
     all_paths = print_solution(start_node, min_distance, parents, index_to_node_map)
-    print('\nALL PATHS:')
-    print(all_paths)
+    #print('\nALL PATHS:')
+    #print(all_paths)
 
     forwarding_table = construct_forwarding_table(all_paths)
-    print('FORWARDING TABLE:')
-    print(json.dumps(forwarding_table, indent=4))
     return forwarding_table
 
 def construct_adjacency_matrix(network_topology):
     # assign each ip:port node a number for the adjacency matrix
-    print('constructing adjacency matrix')
     num_nodes = len(network_topology)
     index_to_node_map = {}
     node_to_index_map = {}
@@ -166,10 +156,6 @@ def construct_adjacency_matrix(network_topology):
     
     adjacency_matrix = [[0 for column in range(num_nodes)]
                       for row in range(num_nodes)]
-    print('index to node')
-    print(json.dumps(index_to_node_map, indent=4))
-    print('node to index')
-    print(json.dumps(node_to_index_map, indent=4))
 
     for node in network_topology:
         node_index = node_to_index_map[node]
@@ -179,13 +165,12 @@ def construct_adjacency_matrix(network_topology):
             adjacency_matrix[node_index][neighbor_index] = 1
             adjacency_matrix[neighbor_index][node_index] = 1
 
-    print('ADJACENCY MATRIX: ')
-    print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in adjacency_matrix]))
-    print('done with constructing adjacency matrix')
+    #print('ADJACENCY MATRIX: ')
+    #print('\n'.join(['\t'.join([str(cell) for cell in row]) for row in adjacency_matrix]))
+    #print('done with constructing adjacency matrix')
     return adjacency_matrix, index_to_node_map, node_to_index_map
 
 def parse_packet(packet):
-    print('parsing packet')
     header = struct.unpack('!cIIIIIIIIIIII', packet[:49])
     packet_type = header[0].decode('ascii')
     source_ip = str(header[1]) + '.' + str(header[2]) + '.' + str(header[3]) + '.' + str(header[4])
@@ -201,29 +186,29 @@ def parse_packet(packet):
     else:
         data = data.decode()
 
-    if packet_type != Packet_Type.HELLO_MESSAGE.value:
-        print('-----------------------------')
-        print('INCOMING PACKET:')
-        print('packet type: ', packet_type)
-        print('source ip: ', source_ip, ', source port: ', source_port)
-        print('dest ip: ', dest_ip, ', dest port: ', dest_port)
-        print('sequence number: ', sequence_number)
-        print('time to live: ', ttl)
-        print('data: ', data)
-        print('-----------------------------')
+    #if packet_type != Packet_Type.HELLO_MESSAGE.value:
+    #    print('-----------------------------')
+    #    print('INCOMING PACKET:')
+    #    print('packet type: ', packet_type)
+    #    print('source ip: ', source_ip, ', source port: ', source_port)
+    #    print('dest ip: ', dest_ip, ', dest port: ', dest_port)
+    #    print('sequence number: ', sequence_number)
+    #    print('time to live: ', ttl)
+    #    print('data: ', data)
+    #    print('-----------------------------')
         
     return packet_type, source_ip, source_port, sequence_number, ttl, dest_ip, dest_port, data
 
 def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port):
-    print('--------------------------------------')
-    print('SENDING ROUTETRACE PACKET back to the original source addr:')
-    print('packet type: ', packet_type)
-    print('emulator ip: ', emulator_ip, ', emulator port: ', emulator_port)
-    print('source ip: ', source_ip, ', source port: ', source_port)
-    print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
+    #print('--------------------------------------')
+    #print('SENDING ROUTETRACE PACKET back to the original source addr:')
+    #print('packet type: ', packet_type)
+    #print('emulator ip: ', emulator_ip, ', emulator port: ', emulator_port)
+    #print('source ip: ', source_ip, ', source port: ', source_port)
+    #print('dest hostname: ', dest_ip, ', dest port: ', dest_port)
     # print('sequence number: ', sequence_number) unused field in routetrace packets
-    print('time to live: ', time_to_live)
-    print('--------------------------------------')
+    #print('time to live: ', time_to_live)
+    #print('--------------------------------------')
 
     emulator_ip_a = int(emulator_ip.split('.')[0])
     emulator_ip_b = int(emulator_ip.split('.')[1])
@@ -249,7 +234,7 @@ def send_routetrace_packet(packet_type, source_ip, source_port, sequence_number,
     data = ''.encode()
     packet = header + data
 
-    print('going to send packet to: ', source_ip, ':', source_port)
+    #print('going to send packet to: ', source_ip, ':', source_port)
     global sock
     # send the packet back to where it came from
     sock.sendto(packet, (source_ip, source_port))
@@ -286,7 +271,7 @@ def send_hello_message_to_neighbors(my_addr, neighboring_nodes):
         sock.sendto(packet, (dest_ip, dest_port))
 
 def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_number):
-    print('SENDING LSM TO NEIGHBORS: ', neighboring_nodes, ', seq number: ', sequence_number)
+    #print('SENDING LSM TO NEIGHBORS: ', neighboring_nodes, ', seq number: ', sequence_number)
     source_ip = my_addr.split(':')[0]
     source_ip_a = int(source_ip.split('.')[0])
     source_ip_b = int(source_ip.split('.')[1])
@@ -296,7 +281,7 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
     time_to_live = 20
 
     for neighbor in neighboring_nodes:
-        print('sending link state message to neighbor: ', neighbor, ', with seq number: ', sequence_number)
+        #print('sending link state message to neighbor: ', neighbor, ', with seq number: ', sequence_number)
         dest_ip = neighbor.split(':')[0]
         dest_port = int(neighbor.split(':')[1])
 
@@ -312,22 +297,19 @@ def send_link_state_message_to_neighbors(my_addr, neighboring_nodes, sequence_nu
         data = pickle.dumps(neighboring_nodes)
         packet = header + data
        
-        print('going to send lsm now') 
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
 
 # finds the shortest path between all nodes from source to dest
 # and returns an updated forwarding table
 def find_shortest_path_and_return_forwarding_table(my_addr, network_topology):
-    print('FINDING SHORTEST PATH AND BUILDING FORWARDING TABLE')
     adjacency_matrix, index_to_node_map, node_to_index_map = construct_adjacency_matrix(network_topology)
     starting_node = node_to_index_map[my_addr] # this should be the emulator's node
     forwarding_table = dijkstra(adjacency_matrix, starting_node, index_to_node_map)
-    print('done with shortest path')
+    
     return forwarding_table
 
 def init_available_nodes(network_topology):
-    print('INIT AVAILABLE NODES DICT')
     available_nodes = {}
     
     for node in network_topology:
@@ -336,7 +318,6 @@ def init_available_nodes(network_topology):
     return available_nodes
 
 def init_lsp_dict(network_topology):
-    print('INIT LSP DICT')
     lsp_dict = {}
 
     for node in network_topology:
@@ -345,7 +326,6 @@ def init_lsp_dict(network_topology):
     return lsp_dict
 
 def init_received_hello_message(list_of_neighbors):
-    print('INIT RECEIVED HELLO MESSAGE DICT')
     received_hello_message = {}
 
     for node in list_of_neighbors:
@@ -361,7 +341,6 @@ def epoch_time_in_milliseconds_now():
     return time_now_in_milliseconds
 
 def decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data):
-    print('decrementing time to live in a packet')
     source_ip_a = int(source_ip.split('.')[0])
     source_ip_b = int(source_ip.split('.')[1])
     source_ip_c = int(source_ip.split('.')[2])
@@ -394,8 +373,6 @@ def decrement_time_to_live(packet_type, source_ip, source_port, sequence_number,
 #   "ip:port": ["ip:port", "ip:port"]
 # }
 def update_network_topology(original_network_topology, available_nodes):
-    print('UPDATING NETWORK TOPOLOGY')
-
     updated_network_topology = copy.deepcopy(original_network_topology)
     unavailable_nodes = []
 
@@ -411,22 +388,18 @@ def update_network_topology(original_network_topology, available_nodes):
             if neighbor in unavailable_nodes:
                 neighbors.remove(neighbor)
 
-    print('updated network topology: ')
-    print(json.dumps(updated_network_topology, indent=4))
     return updated_network_topology
 
 def forward_link_state_packet_to_neighbors(packet, neighboring_nodes, original_sender):
     # we are forwarding the LSM as is that we received from a neighbor
-    print('FORWARDING LSM TO NEIGHBORS: ', neighboring_nodes)
+    #print('FORWARDING LSM TO NEIGHBORS: ', neighboring_nodes)
     
     for neighbor in neighboring_nodes:
-        print('forwarding link state message to neighbor: ', neighbor)
         if neighbor == original_sender:
-            print('neighbor is the same as the orig source/ sender, so we skip forwarding this')
             continue
         dest_ip = neighbor.split(':')[0]
         dest_port = int(neighbor.split(':')[1])
-        print('about to send lsp')
+        
         global sock
         sock.sendto(packet, (dest_ip, dest_port))
 
@@ -477,22 +450,16 @@ lsp_sequence_number = 0
 # we will init all neighbors to be active initially
 # received_hello_message = { ip:port : False }
 available_nodes = init_available_nodes(original_network_topology)
-print('INITIAL available_nodes dict: ')
-print(json.dumps(available_nodes, indent=4))
 
 send_hello_message_timer_deadline = None
 send_lsp_timer_deadline = None
 
 received_hello_message = init_received_hello_message(original_network_topology[my_addr])
-print('INITIAL received hello message dict:')
-print(json.dumps(received_hello_message, indent=4))
 
 #{
 # ip:port : latest_seq_number
 #}
 lsp_dict = init_lsp_dict(original_network_topology[my_addr])
-print('INITIAL LSP dict:')
-print(json.dumps(lsp_dict, indent=4))
 
 network_topology = copy.deepcopy(original_network_topology)
 forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
@@ -510,9 +477,6 @@ while True:
             send_hello_message_timer_deadline = time_now + 1000
 
         if send_lsp_timer_deadline == None or time_now > send_lsp_timer_deadline:
-            print_topology_and_forwarding_table(network_topology, forwarding_table)
-
-            print('sending periodic lsm')
             neighboring_nodes = network_topology[my_addr]
             send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number)
             lsp_sequence_number += 1  
@@ -527,32 +491,22 @@ while True:
                 received_hello_message[node]["deadline"] = time_now + 4000 
  
         if neighbor_node_went_down:
-            print('a neighbor node went down, going to update topology')
-            print('check - avail nodes: ')
-            print(json.dumps(available_nodes, indent=4))
-            #print('check - hello received dict: ')
-            #print(json.dumps(received_hello_message, indent=4))
-    
             network_topology = update_network_topology(original_network_topology, available_nodes)
             forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-            print('updated forwarding table:')            
-            print(json.dumps(forwarding_table, indent=4))
-            print(json.dumps(network_topology, indent=4))
-            print('neighbors: ', network_topology[my_addr])        
             neighboring_nodes = network_topology[my_addr]
-            print('SEQUENCE NUMBER in main before sending lsm: ', lsp_sequence_number)
+            
+            print_topology_and_forwarding_table(network_topology, forwarding_table) 
+            
             send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number)
             lsp_sequence_number += 1
-
+        
         packet, sender_address = sock.recvfrom(8192) # Buffer size is 8192. Change as needed
         sender_full_address = str(sender_address[0]) + ':' + str(sender_address[1])
 
         if packet:
-            print('RECEIVED A PACKET!!')
             packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data = parse_packet(packet)
                
             if packet_type == Packet_Type.HELLO_MESSAGE.value:
-                print('received hello from: ', sender_full_address)
                 
                 # change in status of machine so we do an update
                 if not available_nodes[sender_full_address]:
@@ -560,76 +514,56 @@ while True:
                     
                     network_topology = update_network_topology(original_network_topology, available_nodes)
                     forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
-                
+              
+                    print_topology_and_forwarding_table(network_topology, forwarding_table)
+                    
                     neighboring_nodes = network_topology[my_addr]
-                    #send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number + 1)
-                    #lsp_sequence_number += 1
-                
+                    send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number)
+                    lsp_sequence_number += 1 
+
                 received_hello_message[sender_full_address]["deadline"] = time_now + 4000
-                print('check - avail nodes: ')
-                print(json.dumps(available_nodes, indent=4))
-                print('check - hello received dict: ')
-                print(json.dumps(received_hello_message, indent=4))
 
         if packet_type == Packet_Type.LINK_STATE_MESSAGE.value:
-            print('received link state packet from: ', sender_full_address)
             curr_node = source_ip + ':' + str(source_port)
-            print('source of link state packed originally from: ', curr_node)
             curr_seq_number_for_this_source = lsp_dict[curr_node]
 
             if time_to_live == 0:
                 lsp_dict[curr_node] = None
 
-            print('here 1')
             if curr_seq_number_for_this_source == None or sequence_number > curr_seq_number_for_this_source:
-                print('551')
                 lsp_dict[curr_node] = curr_seq_number_for_this_source
-                print('553')
                 senders_available_neighboring_nodes = data
-                print('555')
                 original_senders_available_nodes = original_network_topology[curr_node]
-                print('557')
 
                 nodes_that_went_down = [node for node in original_senders_available_nodes if node not in senders_available_neighboring_nodes]
-                print('nodes that went down: ', nodes_that_went_down)
                 for node in nodes_that_went_down:
-                    print('a node went down according to lsp')
                     available_nodes[node] = False
-                    print('here 2')
 
-                print('checking for nodes that came alive')
                 nodes_that_came_alive = [node for node in senders_available_neighboring_nodes if not available_nodes[node]] 
-                print('nodes that came alive: ', nodes_that_came_alive)
                 for node in nodes_that_came_alive:
                     available_nodes[node] = True
-                print('going to update network topo now and construct FT')
 
                 if len(nodes_that_went_down) > 0 or len(nodes_that_came_alive) > 0:
                     network_topology = update_network_topology(original_network_topology, available_nodes)
                     forwarding_table = find_shortest_path_and_return_forwarding_table(my_addr, network_topology)
 
+                    print_topology_and_forwarding_table(network_topology, forwarding_table)
+    
                 neighboring_nodes = original_network_topology[my_addr]
                 packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
                 original_sender = source_ip + ':' + str(source_port)
-                print('original source/ sender of this lsp is: ', original_sender)
-                print('going to forward lsp to neighbors')            
                 forward_link_state_packet_to_neighbors(packet, neighboring_nodes, original_sender)
-                print('done forwarding lsp to neighbors')    
 
         if packet_type == Packet_Type.ROUTE_TRACE.value:
-            print('received routetrace packet from:', sender_full_address)
             if time_to_live == 0:
-                print('time to live is 0')
                 send_routetrace_packet(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data, emulator_ip, emulator_port)
             else:
-                print('ttl is not 0')
                 packet = decrement_time_to_live(packet_type, source_ip, source_port, sequence_number, time_to_live, dest_ip, dest_port, data)
                 dest_addr = dest_ip + ':' + str(dest_port)
                 next_hop = forwarding_table[dest_addr]
-                print('TTL is not 0 - forwarding routetrace packet to next hop: ', next_hop)
                 next_hop_ip = next_hop.split(':')[0]
                 next_hop_port = int(next_hop.split(':')[1])
-                print('next hop ip: ', next_hop_ip, ', next hop port: ', next_hop_port)
+                
                 sock.sendto(packet, (next_hop_ip, next_hop_port))
 
     except:

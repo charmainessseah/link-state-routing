@@ -1,0 +1,6 @@
+snares-01,1100 snares-03,3000
+snares-02,2000 snares-03,3000 snares-05,5000
+snares-03,3000 snares-01,1100 snares-02,2000 snares-04,4000 snares-05,5000
+snares-04,4000 snares-03,3000 snares-05,5000
+snares-05,5000 snares-02,2000 snares-04,4000 snares-06,6000 snares-03,3000
+snares-06,6000 snares-05,5000
