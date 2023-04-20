@@ -442,7 +442,7 @@ def print_topology_and_forwarding_table(network_topology, forwarding_table):
         ip, port = get_ip_and_port_from_full_addr(node)
         print(ip, ',', port, sep='', end=" ")
         for neighbor in network_topology[node]:
-            ip, port = get_ip_and_port_from_full_addr(node)
+            ip, port = get_ip_and_port_from_full_addr(neighbor)
             print(ip, ',', port, sep='', end=" ")
         print()
    
@@ -454,7 +454,7 @@ def print_topology_and_forwarding_table(network_topology, forwarding_table):
         print(ip, ',', port, sep='', end=" ")
 
         next_hop = forwarding_table[node]
-        ip, port = get_ip_and_port_from_full_addr(node)
+        ip, port = get_ip_and_port_from_full_addr(next_hop)
         print(ip, ',', port, sep='')
     print()
 
@@ -510,6 +510,8 @@ while True:
             send_hello_message_timer_deadline = time_now + 1000
 
         if send_lsp_timer_deadline == None or time_now > send_lsp_timer_deadline:
+            print_topology_and_forwarding_table(network_topology, forwarding_table)
+
             print('sending periodic lsm')
             neighboring_nodes = network_topology[my_addr]
             send_link_state_message_to_neighbors(my_addr, neighboring_nodes, lsp_sequence_number)
